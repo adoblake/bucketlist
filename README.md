@@ -6,7 +6,7 @@ A mobile web prototype for **find a court → join a scheduled game → set up y
 
 **Open Bucketlist: https://adoblake.github.io/bucketlist/**
 
-Source: https://github.com/adoblake/bucketlist. The private working preview remains at https://bucketlist-recovered-oct29.adoblake.chatgpt.site/.
+Source: https://github.com/adoblake/bucketlist. Shared groups and chat: https://bucketlist-recovered-oct29.adoblake.chatgpt.site/community/.
 
 Court photos: court detail sheets now show aerial photographs centered on each venue’s stored coordinates, fetched from Esri World Imagery. Capture dates and provider credits appear when the source supplies them. Encanto Park also offers a verified basketball-court photograph from City of Phoenix Parks and Recreation; its publication date is distinct from the unknown capture date. Image errors offer retry and Maps/Street View links. No generic image is substituted for an unknown venue. Aerial images require Internet access and represent the provider’s dated photography.
 
@@ -26,11 +26,25 @@ The public app is published on GitHub Pages from the `gh-pages` branch of `adobl
 
 The hosted phone test was attempted, but this cloud Chromium rejected the environment’s HTTPS proxy certificate. TLS verification was not disabled. Public HTTPS responses were independently verified using the environment’s trusted CA bundle, and mobile subpath/manifest/offline behavior passed against the same build on a local test server. A physical iPhone/Android installation has not been tested.
 
-This is an installable mobile web demo, not an App Store build. Each phone has its own browser-local data. Chat, reservations, and profiles are not synchronized between phones.
+The court/game/stat screens remain an installable browser-local demo. Shared groups and chat use a real hosted database and authenticated accounts, so group membership and messages work across devices. No local demo people or conversations are uploaded to the shared service.
 
 To verify the built phone package locally: run `npm run build:web`, then `npm run preview:web` in a separate terminal, then `npm run test:phone` (set `BROWSER_EXECUTABLE` when using a system Chromium). The default test checks the same repository subpath used by Pages, including offline service-worker reload.
 
-To publish GitHub Pages, commit and push source to `main`, then run `npm run publish:web`. The publisher updates `gh-pages` in the configured GitHub repository without force-pushing. To also update the private working Site, copy `web-dist/` into `dist/`, commit and push the Site source, then publish that exact commit with `.openai/hosting.json` and `dist/`.
+To publish GitHub Pages, commit and push source to `main`, then run `npm run publish:web`. The publisher updates `gh-pages` in the configured GitHub repository without force-pushing. To update the shared community service, run `npm run build:community`, commit and push the Site source, then package the contents of `community-dist/` (including `.openai/` and `dist/`) and publish that exact commit. The Worker manifest declares the `DB` D1 binding; migrations are included under `dist/.openai/drizzle/`. Do not package the frontend `dist/` snapshot as the community Worker.
+
+## Shared groups and chat
+
+The main **Chat** tab and account button open the shared community service. Sign-in uses ChatGPT, including Google through ChatGPT. The Google choice explains that a Google-linked ChatGPT account is required and that it can be created during sign-in. Players then choose a name or nickname; Bucketlist itself asks for no age, gender, religion, phone number, or public email.
+
+- Create invite-only groups, share an invitation, join, and exchange persistent messages across devices. Only authenticated members can access a group's messages. Live views refresh about every three seconds.
+- Group creators can replace invitations, remove members, delete messages, and delete their group. Members can leave and delete their own messages. Server-side validation, capacity checks, send deduplication, and per-account rate limits protect writes.
+- Everyone can share the general app link before signing in. Invitation controls belong to group creators.
+- Message alerts are opt-in per device and use encrypted Web Push. Notification text does not include private message content. On iPhone/iPad, the community page must be added to Home Screen before enabling alerts. Delivery depends on browser/OS support and notification permission.
+- Returning court-app visitors see the release notice once; it can be reopened from **What’s new**. Existing open pages check for later releases. Merely possessing the URL does not make a visitor reachable for closed-app alerts.
+
+The community UI and API share one origin to use platform-owned authentication safely. Public visitors can see the entry page; group data requires a signed-in account and membership. The database stores display names, group memberships, messages, and optional push subscriptions. VAPID key material is generated and retained server-side. It is never bundled in the client.
+
+For local development: `npm run build:community`, then `PORT=3120 node scripts/community-local.mjs`. This loopback-only adapter simulates account identity and uses local SQLite; it is excluded from the deployed Worker. `npm test` covers server permissions and Web Push crypto. `node tests/community-browser.cjs` checks separate browser identities against that local preview. Generate future schema changes with `npm run db:generate`; never modify already-applied migrations.
 
 ## Calendar and guest-profile flow
 
@@ -111,7 +125,7 @@ Captured on a mobile viewport. Street tiles are blocked in the cloud screenshots
 
 ## Development
 
-Requires Node.js 22+ and npm.
+Requires Node.js 22.13+ and npm.
 
 ```sh
 npm ci
@@ -144,7 +158,7 @@ The map uses Leaflet 1.9.4, Leaflet.markercluster 1.5.3, and OpenStreetMap stree
 
 Phoenix coordinates and amenity labels come from city records; starter-venue coordinates elsewhere remain unverified. Current access, hours, occupancy, and conditions are not verified. All basketball parks is the default directory mode. The separate Games with open spots mode uses future scheduled games and selected day/style. Neither mode claims live court occupancy. Self-reported sample availability is not a court reservation. In Games with open spots, pins and list both exclude courts without a matching game; switch to All basketball parks to see those venues.
 
-Precise user coordinates stay in memory and are not saved in the profile; there is no background tracking. Visible map bounds are sent to Overpass for area discovery for the visible area, and destination text goes to Nominatim. Normal map viewport tile requests go to OpenStreetMap; opening directions sends the chosen public venue to Google. Stats/profile visibility remains a local UI demonstration, not server authorization. Real privacy, team reservations, and message delivery require authenticated shared storage.
+Precise user coordinates stay in memory and are not saved in the profile; there is no background tracking. Visible map bounds are sent to Overpass for area discovery for the visible area, and destination text goes to Nominatim. Normal map viewport tile requests go to OpenStreetMap; opening directions sends the chosen public venue to Google. Stats/profile visibility remains a local UI demonstration, not server authorization. The separate shared community service enforces its group membership and message permissions on the server. Shared game reservations and stats synchronization remain future work.
 
 See [UX decisions and standard references](docs/UX-DECISIONS.md) for the applied conventions, source-access limitations, and remaining production work. The new published Figma site also could not be retrieved through the cloud proxy.
 
@@ -156,6 +170,6 @@ See [UX decisions and standard references](docs/UX-DECISIONS.md) for the applied
 
 ## Next production milestones
 
-Authentication; shared games and atomic capacity reservations; realtime chat; server-enforced profile permissions; host controls/cancellation; waitlists; notifications; reporting/blocking and moderation; verified courts/accessibility; real Maps/Places integration; native packaging and device testing.
+Shared games and atomic capacity reservations; synchronized personal stats and profiles; host controls/cancellation; waitlists; broader reporting and moderation; verified courts/accessibility; native packaging and physical-device push testing.
 
 The business plan and layout screenshot informed this version. The Figma links and reference GitHub repository were inaccessible. See [PRODUCT.md](PRODUCT.md) for the product direction.

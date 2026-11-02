@@ -5,11 +5,11 @@ const url=process.env.APP_URL||'http://127.0.0.1:3114';
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox']});
  const errors=[];const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,colorScheme:'light',timezoneId:'America/Phoenix'});
- await context.addInitScript(()=>{localStorage.setItem('bucketlist-welcome-seen','yes');Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
+ await context.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','2026-11-02-shared-groups-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
  await context.route('https://tile.openstreetmap.org/**',r=>r.abort());await context.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));
  const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
  async function dismissUpdates(){await p.waitForTimeout(350);if(await p.locator('#location-updates').evaluate(e=>e.open))await p.locator('#dismiss-location-updates').click();}
- const nav=tab=>p.locator('.bottom-nav [data-tab='+tab+']').click();
+ const nav=async tab=>{if(tab==='chats'){await p.locator('#menu-toggle').click();await p.locator('#app-menu [data-tab=chats]').click();}else await p.locator('.bottom-nav [data-tab='+tab+']').click();};
  try{
   await p.goto(url,{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.querySelector('#game-plan-photo img')?.complete);await dismissUpdates();
   assert.equal(await p.locator('.screen:visible').getAttribute('id'),'games-screen');
@@ -27,7 +27,7 @@ const url=process.env.APP_URL||'http://127.0.0.1:3114';
   // The four tabs retain the original courts, groups, and stats workflows.
   await nav('chats');assert.equal(await p.locator('#chats-screen').isVisible(),true);assert.match(await p.locator('#chat-list').innerText(),/Encanto/);
   await nav('discover');await p.locator('.user-location').waitFor();await p.waitForFunction(()=>Number(document.querySelector('#court-map').dataset.resultCount)>0);assert.ok(Number(await p.locator('#court-map').getAttribute('data-result-count'))>0);const dot=await p.locator('.user-location').boundingBox(),map=await p.locator('#court-map').boundingBox();assert.ok(Math.abs(dot.x+dot.width/2-map.x-map.width/2)<15);assert.ok(Math.abs(dot.y+dot.height/2-map.y-map.height/2)<15);await dismissUpdates();
-  await nav('games');await p.locator('#open-profile').click();assert.equal(await p.locator('[name=name]').inputValue(),'QA Player');await p.locator('#sign-out').click();await nav('games');await dismissUpdates();
+  await nav('games');await p.locator('#menu-toggle').click();await p.locator('#app-menu [data-tab=profile]').click();assert.equal(await p.locator('[name=name]').inputValue(),'QA Player');await p.locator('#sign-out').click();await nav('games');await dismissUpdates();
   assert.equal(await p.locator('#plan-session-count').innerText(),'—');assert.equal(await p.locator('#plan-ppg').innerText(),'—');
   // The demo remains explicitly fictional and never replaces personal records.
   await p.locator('#plan-profile').click();assert.equal(await p.locator('#plan-profile').innerText(),'Demo profile');assert.equal(await p.locator('#plan-session-count').innerText(),'24');assert.match(await p.locator('#plan-stats-label').innerText(),/Demo stats/i);

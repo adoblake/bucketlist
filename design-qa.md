@@ -65,3 +65,16 @@ The focused browser review passes: matching original pin paths in each brand sur
 The public address is `https://adoblake.github.io/bucketlist/`, with source and Pages deployment in the renamed repository `adoblake/bucketlist`. One shared site configuration supplies the standalone fallback, both QR-code generators, the preview subpath, and the Pages publisher. The hosted app continues to derive its ordinary share links from its current origin and path. The private working Site remains owner-only.
 
 Validation: the build and all 35 Node tests pass. The mobile `/bucketlist/` regression passes for the Game Plan opening, primary branding, directory, manifest/icons/QR assets, service-worker control, offline reload/showcase, install help, and subpath-aware sharing.
+
+
+## Shared community update — November 2, 2026
+
+Added a separate same-origin community surface with the original primary logo, light/dark themes, large controls, plain sign-in requirements, accessible labels/status messages, and a name-or-nickname step. Google is explicitly offered through ChatGPT rather than represented as an independent provider. App sharing is available before sign-in. Private-group invitations are managed by the creator.
+
+The main Chat/account entry now opens the shared community. Sample game, roster, stats, and chat data remain labeled as local demos and are not uploaded. Returning users get a one-time release popup; optional Web Push requires explicit device permission. No claim is made that all past link recipients can be notified without opting in.
+
+Validation: 43 Node tests pass, including member-only access, outsider denial, revocation, message deduplication and validation, unread handling, rate limits, and independent Web Push decryption/VAPID signature checks. A separate-browser local integration passes signup/name setup, invitations, two-person chat, reload persistence, literal text rendering, invitation rotation, removed-member denial, light/dark, responsive layout, guest app sharing, and no automatic notification prompt. Authentication in that local test is simulated by a loopback-only adapter; hosted sign-in remains owned by the platform.
+
+The final review identified and corrected a Content Security Policy omission: `worker-src self` is now allowed explicitly while scripts remain restricted to their content hash. The browser integration verifies service-worker registration without requesting notification permission. The original local game/profile/browser regression, mobile offline/install regression, and one-time update-popup regression also pass.
+
+Hosted verification confirms the D1 binding and all seven tables, healthy API, public entry page, service-worker route, and ChatGPT authorization redirect. Anonymous group-list requests receive 401. Supplying forged identity headers still produces an anonymous session; the hosting boundary strips untrusted identity. No test groups, test people, or sample messages were seeded into the live database.

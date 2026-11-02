@@ -6,7 +6,7 @@ const assert=require('node:assert/strict');
   const context=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,colorScheme:'dark',reducedMotion:'reduce'}),p=await context.newPage(),errors=[];
   p.on('pageerror',e=>errors.push(e.message));
   const url=process.env.PHONE_URL||'http://127.0.0.1:3095/bucketlist/';
-  await p.addInitScript(()=>{localStorage.setItem('bucketlist-welcome-seen','yes');Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
+  await p.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','2026-11-02-shared-groups-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
   await p.route('https://tile.openstreetmap.org/**',r=>r.abort());
   await p.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));
   const dismissUpdates=async()=>{await p.waitForTimeout(350);if(await p.locator('#location-updates').evaluate(e=>e.open))await p.locator('#dismiss-location-updates').click();};

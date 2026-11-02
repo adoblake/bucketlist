@@ -17,12 +17,16 @@
     "preview:web": "node scripts/preview-web.mjs",
     "refresh:courts": "node scripts/refresh-courts.mjs",
     "test:courts": "node tests/courts.cjs",
-    "test:location": "node tests/location.cjs"
+    "test:location": "node tests/location.cjs",
+    "db:generate": "drizzle-kit generate",
+    "build:community": "node scripts/build-community.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "devDependencies": {
+    "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2",
     "playwright": "1.64.1",
     "qrcode": "1.5.4"
   },

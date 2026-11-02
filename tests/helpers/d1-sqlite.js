@@ -1,0 +1,4 @@
+import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
+export function testDatabase(){const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');sql.exec(readFileSync(new URL('../../drizzle/0000_sticky_nightcrawler.sql',import.meta.url),'utf8'));
+ const prepare=(query,args=[])=>({bind(...values){return prepare(query,values);},async first(){return sql.prepare(query).get(...args)||null;},async all(){return {results:sql.prepare(query).all(...args)};},async run(){const result=sql.prepare(query).run(...args);return {meta:{changes:Number(result.changes)}};}});
+ return {sql,prepare:query=>prepare(query),async batch(statements){sql.exec('BEGIN');try{const out=[];for(const s of statements)out.push(await s.run());sql.exec('COMMIT');return out;}catch(error){sql.exec('ROLLBACK');throw error;}}};}

@@ -34,3 +34,5 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 .welcome-brand .brand-lockup{--brand-mark-height:75px;--brand-wordmark-size:32px;--brand-tagline-size:16px;gap:8px}
 @media(max-width:350px){.brand-lockup--compact{--brand-mark-height:28px}}
 @media(max-height:740px){.welcome-brand{margin:0 auto 16px}.welcome-brand .brand-lockup{--brand-mark-height:60px;--brand-wordmark-size:28px;--brand-tagline-size:14px;gap:6px}}
+
+#app-update-dialog{width:min(480px,calc(100% - 24px));background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:14px}.app-update-body{padding:24px}.app-update-body h2{font-size:28px;line-height:1.15;margin:0 0 14px}.app-update-body .muted{font-size:15px;line-height:1.7;margin-bottom:22px}.app-update-body .primary,.app-update-body .secondary{min-height:48px;margin-top:10px;font-size:14px}

@@ -6,7 +6,7 @@ const fixtures=process.env.PHOTO_FIXTURES||require('node:path').join(__dirname,'
  const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox']});
  const errors=[],exports=[];let rejectExport=false,lateRoute=null,holdExport=false,missingDate=false;
  const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark',reducedMotion:'reduce'});
- await context.addInitScript(()=>{localStorage.setItem('bucketlist-welcome-seen','yes');localStorage.setItem('bucketlist-theme','dark');Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.47028247951755,longitude:-111.98406982543241,accuracy:20}});}}});});
+ await context.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','2026-11-02-shared-groups-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));localStorage.setItem('bucketlist-theme','dark');Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.47028247951755,longitude:-111.98406982543241,accuracy:20}});}}});});
  await context.route('https://tile.openstreetmap.org/**',r=>r.abort());
  await context.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));
  await context.route('**/World_Imagery/MapServer/export?**',async route=>{
