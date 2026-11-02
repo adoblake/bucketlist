@@ -36,6 +36,8 @@ To publish GitHub Pages, commit and push source to `main`, then run `npm run pub
 
 The main **Chat** tab and account button open the shared community service. Sign-in uses ChatGPT, including Google through ChatGPT. The Google choice explains that a Google-linked ChatGPT account is required and that it can be created during sign-in. Players then choose a name or nickname; Bucketlist itself asks for no age, gender, religion, phone number, or public email.
 
+Independent **email + one-time code** sign-in is implemented and locally tested, without requiring a ChatGPT account or password. It remains disabled in production until a Supabase auth project and public email sender are configured. See [email sign-in setup and verification](docs/email-sign-in.md) for the exact remaining owner setup, supported runtime settings, identity behavior, and mocked preview screenshots. The existing sign-in choices remain available.
+
 - Create invite-only groups, share an invitation, join, and exchange persistent messages across devices. Only authenticated members can access a group's messages. Live views refresh about every three seconds.
 - Group creators can replace invitations, remove members, delete messages, and delete their group. Members can leave and delete their own messages. Server-side validation, capacity checks, send deduplication, and per-account rate limits protect writes.
 - Everyone can share the general app link before signing in. Invitation controls belong to group creators.

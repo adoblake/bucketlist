@@ -1,9 +1,9 @@
 import {pushGroupMessage,pushKeys,validateSubscription,sha256Text,PushError} from './push.js';
+import {createEmailAuth,normalizeEmail,EmailAuthError} from './email-auth.js';
 const apiHeaders={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
-const answer=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:apiHeaders});
-function identity(request){const id=request.headers.get('oai-authenticated-user-id'),email=request.headers.get('oai-authenticated-user-email');return id&&email&&id.length<=300?{id:'chatgpt:'+id}:null;}
-function requireUser(request){const user=identity(request);if(!user)throw new ApiError(401,'Please sign in to continue.');return user;}
+const jsonAnswer=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:apiHeaders});
+function nativeIdentity(request){const id=request.headers.get('oai-authenticated-user-id'),email=request.headers.get('oai-authenticated-user-email');return id&&email&&id.length<=300?{id:'chatgpt:'+id,method:'chatgpt'}:null;}
 function cleanText(value,min,max,label){if(typeof value!=='string')throw new ApiError(400,'Enter '+label+'.');const s=value.trim().normalize('NFC');if([...s].length<min||[...s].length>max||/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(s))throw new ApiError(400,`${label} must be ${min}–${max} characters.`);return s;}
 async function bodyJson(request){if(!request.headers.get('content-type')?.startsWith('application/json'))throw new ApiError(415,'Please send this form again.');if(Number(request.headers.get('content-length')||0)>12000)throw new ApiError(413,'This request is too large.');const text=await request.text();if(text.length>12000)throw new ApiError(413,'This request is too large.');try{const data=JSON.parse(text);if(!data||typeof data!=='object'||Array.isArray(data))throw Error();return data;}catch{throw new ApiError(400,'Please check the form and try again.');}}
 const uuid=()=>crypto.randomUUID();
@@ -13,8 +13,11 @@ async function profile(db,id){return db.prepare('SELECT id,name FROM community_p
 async function mustProfile(db,id){const p=await profile(db,id);if(!p)throw new ApiError(409,'Choose your display name first.');return p;}
 async function membership(db,group,id){const m=await db.prepare('SELECT m.role,g.name,g.owner_id,g.invite_code FROM community_members m JOIN community_groups g ON g.id=m.group_id WHERE m.group_id=? AND m.user_id=?').bind(group,id).first();if(!m)throw new ApiError(403,'You need an invitation to join this group.');return m;}
 async function owned(db,group,id){const m=await membership(db,group,id);if(m.role!=='owner')throw new ApiError(403,'Only the group creator can do that.');return m;}
-async function communityApi(request,env,ctx={waitUntil(){}}){
+async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
  const url=new URL(request.url),path=url.pathname.replace(/\/$/,''),method=request.method,db=env.DB;
+ const emailAuth=createEmailAuth(request,env,authOptions),answer=(data,status)=>emailAuth.respond(jsonAnswer(data,status));
+ const native=nativeIdentity(request);if(native)emailAuth.clearCookies();
+ const identity=async()=>native||await emailAuth.identity();
  try{
   if(method!=='GET'&&method!=='HEAD'){
    const origin=request.headers.get('origin');if(origin&&origin!==url.origin)throw new ApiError(403,'Please open Bucketlist and try again.');
@@ -23,9 +26,21 @@ async function communityApi(request,env,ctx={waitUntil(){}}){
   if(!db)throw new ApiError(503,'Groups are getting ready. Please try again shortly.');
   if(path==='/api/community/health'&&method==='GET'){await db.prepare('SELECT COUNT(*) AS ready FROM community_profiles').first();return answer({ready:true});}
   if(path==='/api/community/me'&&method==='GET'){
-   const user=identity(request);return answer({signedIn:!!user,user:user?{id:user.id,profile:await profile(db,user.id)}:null,signIn:'/signin-with-chatgpt?return_to=%2Fcommunity%2F',signOut:'/signout-with-chatgpt?return_to=%2Fcommunity%2F'});
+   const user=await identity();return answer({signedIn:!!user,user:user?{id:user.id,method:user.method,profile:await profile(db,user.id)}:null,auth:{email:emailAuth.available},signIn:'/signin-with-chatgpt?return_to=%2Fcommunity%2F',signOut:user?.method==='email'?null:'/signout-with-chatgpt?return_to=%2Fcommunity%2F'});
   }
-  const user=requireUser(request);
+  if(path==='/api/community/auth/email/signout'&&method==='POST'){await emailAuth.signOut();return answer({ok:true});}
+  if((path==='/api/community/auth/email/start'||path==='/api/community/auth/email/verify')&&method==='POST'){
+   if(!emailAuth.available)throw new ApiError(503,'Email sign-in is not available yet. Please use ChatGPT for now.');
+   if(await identity())throw new ApiError(409,'You are already signed in. Sign out first to use another account.');
+   const data=await bodyJson(request),email=normalizeEmail(data.email),emailKey=await sha256Text(email),ipKey=await sha256Text(request.headers.get('cf-connecting-ip')||'unknown');
+   if(path.endsWith('/start')){
+    await rate(db,ipKey,'email-send-ip',20,3600);await rate(db,emailKey,'email-send',5,900);await rate(db,emailKey,'email-cooldown',1,60);
+    await emailAuth.sendCode(email);return answer({ok:true,resendAfter:60});
+   }
+   await rate(db,ipKey,'email-verify-ip',40,600);await rate(db,emailKey,'email-verify',10,600);
+   await emailAuth.verifyCode(email,data.code);return answer({ok:true});
+  }
+  const user=await identity();if(!user)throw new ApiError(401,'Please sign in to continue.');
   if(path==='/api/community/profile'&&method==='POST'){
    await rate(db,user.id,'profile',12,60);const data=await bodyJson(request),name=cleanText(data.name,1,40,'Your name'),now=Date.now();
    await db.prepare('INSERT INTO community_profiles (id,name,created_at,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,updated_at=excluded.updated_at').bind(user.id,name,now,now).run();return answer({profile:{id:user.id,name}});
@@ -72,7 +87,7 @@ async function communityApi(request,env,ctx={waitUntil(){}}){
   if(path==='/api/community/push'&&method==='POST'){await rate(db,user.id,'subscribe',12,3600);const data=await bodyJson(request),sub=validateSubscription(data),id=await sha256Text(sub.endpoint);const existing=await db.prepare('SELECT user_id FROM community_push WHERE id=?').bind(id).first();if(existing&&existing.user_id!==user.id)throw new ApiError(409,'Turn alerts off, then enable them for this account.');const count=await db.prepare('SELECT COUNT(*) AS n FROM community_push WHERE user_id=?').bind(user.id).first();if(!existing&&count.n>=5)throw new ApiError(409,'Alerts are already enabled on five devices.');await db.prepare('INSERT INTO community_push (id,user_id,endpoint,p256dh,auth,created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET p256dh=excluded.p256dh,auth=excluded.auth').bind(id,user.id,sub.endpoint,sub.p256dh,sub.auth,Date.now()).run();return answer({ok:true});}
   if(path==='/api/community/push'&&method==='DELETE'){const data=await bodyJson(request);if(typeof data.endpoint!=='string')throw new ApiError(400,'Choose a device.');await db.prepare('DELETE FROM community_push WHERE endpoint=? AND user_id=?').bind(data.endpoint,user.id).run();return answer({ok:true});}
   throw new ApiError(404,'This page was not found.');
- }catch(error){if(error instanceof PushError)return answer({error:error.message},400);if(error instanceof ApiError)return answer({error:error.message},error.status);console.error('Community request failed:',error?.message||'Unknown error');return answer({error:'We could not finish that. Your unsent message is still here. Please try again.'},503);}
+ }catch(error){if(error instanceof PushError)return answer({error:error.message},400);if(error instanceof ApiError||error instanceof EmailAuthError)return answer({error:error.message},error.status);console.error('Community request failed:',error?.message||'Unknown error');return answer({error:'We could not finish that. Your unsent message is still here. Please try again.'},503);}
 }
 
 export {communityApi};

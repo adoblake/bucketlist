@@ -11,6 +11,6 @@ const server=http.createServer(async(req,res)=>{try{const origin='http://127.0.0
  const headers=new Headers();for(const [name,value] of Object.entries(req.headers))if(!name.startsWith('oai-')&&value)headers.set(name,Array.isArray(value)?value.join(','):value);
  const id=(req.headers.cookie||'').match(/(?:^|;\s*)community-local-user=(alice|bob|casey)(?:;|$)/)?.[1];if(id){headers.set('oai-authenticated-user-id','local-'+id);headers.set('oai-authenticated-user-email',id+'@sites.test');}
  const chunks=[];for await(const chunk of req)chunks.push(chunk);const request=new Request(url,{method:req.method,headers,...(['GET','HEAD'].includes(req.method)?{}:{body:Buffer.concat(chunks)})});
- const response=await worker.fetch(request,env,{waitUntil(promise){promise.catch(()=>{});}});res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));
+ const response=await worker.fetch(request,env,{waitUntil(promise){promise.catch(()=>{});}});const responseHeaders=Object.fromEntries(response.headers);delete responseHeaders['set-cookie'];res.writeHead(response.status,{...responseHeaders,...(response.headers.getSetCookie().length?{'set-cookie':response.headers.getSetCookie()}:{})});res.end(Buffer.from(await response.arrayBuffer()));
  }catch(error){console.error(error);res.writeHead(500);res.end('Local preview error');}});
 server.listen(Number(process.env.PORT||3120),'127.0.0.1',()=>console.log('Community local preview: http://127.0.0.1:'+(process.env.PORT||3120)+'/community/'));

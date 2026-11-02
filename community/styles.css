@@ -3,3 +3,4 @@
 .card>.button+.button{margin-top:12px}
 
 .header-actions{display:flex;align-items:center;gap:8px;flex:none}.header-actions .link{min-width:44px;font-size:13px;text-decoration:none}
+.card>button.full{margin-top:10px}.auth-divider{display:flex;align-items:center;gap:14px;color:var(--muted);font-size:12px;margin:20px 0}.auth-divider::before,.auth-divider::after{content:"";height:1px;background:var(--line);flex:1}.email-address{font-weight:700;overflow-wrap:anywhere;margin:0 0 20px}input[name=code]{letter-spacing:.15em;font-size:24px}.email-form{gap:12px}.email-form p{margin:0}.email-actions{display:grid;justify-items:start;margin-top:8px}
