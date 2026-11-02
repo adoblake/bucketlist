@@ -62,6 +62,6 @@ The focused browser review passes: matching original pin paths in each brand sur
 
 ## Public URL update — November 2, 2026
 
-The selected public address is `https://adoblake.github.io/bucketlist/`. The prepared deployment targets `adoblake/bucketlist`; activation is pending the repository owner renaming `making-bucketlist` in GitHub Settings. The GitHub integration rejected the automated rename with HTTP 403 (`Resource not accessible by integration`). One shared site configuration supplies the standalone fallback, both QR-code generators, the preview subpath, and the Pages publisher. The hosted app continues to derive its ordinary share links from its current origin and path. The private working Site remains owner-only.
+The public address is `https://adoblake.github.io/bucketlist/`, with source and Pages deployment in the renamed repository `adoblake/bucketlist`. One shared site configuration supplies the standalone fallback, both QR-code generators, the preview subpath, and the Pages publisher. The hosted app continues to derive its ordinary share links from its current origin and path. The private working Site remains owner-only.
 
 Validation: the build and all 35 Node tests pass. The mobile `/bucketlist/` regression passes for the Game Plan opening, primary branding, directory, manifest/icons/QR assets, service-worker control, offline reload/showcase, install help, and subpath-aware sharing.

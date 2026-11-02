@@ -4,7 +4,7 @@ A mobile web prototype for **find a court → join a scheduled game → set up y
 
 ## Put it on your phone
 
-**Prepared public address (awaiting repository rename): https://adoblake.github.io/bucketlist/**
+**Open Bucketlist: https://adoblake.github.io/bucketlist/**
 
 Source: https://github.com/adoblake/bucketlist. The private working preview remains at https://bucketlist-recovered-oct29.adoblake.chatgpt.site/.
 
@@ -16,7 +16,7 @@ Appearance and location updates: the header and menu both offer Light/Dark mode,
 
 Arizona edition: court search, new game venues, and live lookups stay within Arizona. Device location is used only when inside the state; blocked embedded views offer a direct browser link. Share and installation links use the current app. Location failures and directory failures have separate messages and recovery actions. The saved directory contains 125 Phoenix locations; broader Arizona coverage still requires the live directory or previously saved results. No complete statewide snapshot was available during this update.
 
-The prepared public deployment targets GitHub Pages from the `gh-pages` branch of `adoblake/bucketlist`. Activation is pending a repository rename in GitHub Settings; the connected GitHub integration rejected the automated rename with HTTP 403. Its build includes the install manifest, service worker, app icons, and [QR code for showing/printing](docs/share-qr.png). The canonical public address and repository are defined once in `public/site-config.js`; the standalone fallback, QR codes, preview path, and publisher use that configuration.
+The public app is published on GitHub Pages from the `gh-pages` branch of `adoblake/bucketlist`. Its build includes the install manifest, service worker, app icons, and [QR code for showing/printing](docs/share-qr.png). The canonical public address and repository are defined once in `public/site-config.js`; the standalone fallback, QR codes, preview path, and publisher use that configuration.
 
 - **iPhone:** open the HTTPS link in Safari → Share → Add to Home Screen. Enable Open as Web App if offered.
 - **Android:** open in Chrome → menu → Install app / Add to Home screen.
