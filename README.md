@@ -1,12 +1,20 @@
-# BucketList
+# Bucketlist
 
-A mobile web prototype for **find a court → join a scheduled game → set up your team → coordinate and play**. After a brief first-visit welcome, it opens to the full-screen court map; returning signed-in profiles go straight to the map. It follows the supplied mobile reference: hamburger navigation, basketball-pin marker, compact court popup, expandable court/game panels, and Stats / Search / Chat navigation. The orange/black/white design system carries through the app, with light/dark/device themes.
+A mobile web prototype for **find a court → join a scheduled game → set up your team → coordinate and play**. The selected **Game Plan (option 2)** design opens to “Your game plan.” with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Four persistent tabs connect **Courts / Games / Chat / Stats**. Warm off-white, bold Inter typography, orange accents, and a matching dark theme follow the chosen reference while retaining the existing map, teams, calendar, profiles, and browser-local data.
 
 ## Put it on your phone
 
-**Open on your phone: https://adoblake.github.io/making-bucketlist/**
+**Open the restored private Arizona app: https://bucketlist-recovered-oct29.adoblake.chatgpt.site/**
 
-The public site and its manifest, service worker, app icon, and QR image return HTTP 200. The hosted HTML was verified to match the current build. [QR code for showing/printing](docs/share-qr.png). Site files are published on the **gh-pages** branch.
+Court photos: court detail sheets now show aerial photographs centered on each venue’s stored coordinates, fetched from Esri World Imagery. Capture dates and provider credits appear when the source supplies them. Encanto Park also offers a verified basketball-court photograph from City of Phoenix Parks and Recreation; its publication date is distinct from the unknown capture date. Image errors offer retry and Maps/Street View links. No generic image is substituted for an unknown venue. Aerial images require Internet access and represent the provider’s dated photography.
+
+Branding: the original orange basketball pin and single-color **Bucketlist** wordmark are the primary identity. The header keeps the Game Plan placement with a compact lockup; welcome, sign-in, menu, and install screens use the same mark and typography in a stacked lockup. Light and dark themes change the wordmark contrast while preserving the original pin colors.
+
+Appearance and location updates: the header and menu both offer Light/Dark mode, and your choice is saved on this device. New visitors start in the selected light design; existing saved Light, Dark, or device settings are respected. The themed Nearby updates dropdown automatically opens for unseen information in the current area, including location issues, new court listings, and directory failures. Dismiss with Got it, the close button, Escape, or a click outside; reopen it from the header bell. Routine updates do not repeatedly reopen acknowledged notices during the same session.
+
+Arizona edition: court search, new game venues, and live lookups stay within Arizona. Device location is used only when inside the state; blocked embedded views offer a direct browser link. Share and installation links use the current app. Location failures and directory failures have separate messages and recovery actions. The saved directory contains 125 Phoenix locations; broader Arizona coverage still requires the live directory or previously saved results. No complete statewide snapshot was available during this update.
+
+The current restored app is hosted as the private Site linked above. Its build includes the install manifest, service worker, app icons, and [QR code for showing/printing](docs/share-qr.png). The older GitHub Pages publishing script remains available for the upstream repository.
 
 - **iPhone:** open the HTTPS link in Safari → Share → Add to Home Screen. Enable Open as Web App if offered.
 - **Android:** open in Chrome → menu → Install app / Add to Home screen.
@@ -20,7 +28,7 @@ This is an installable mobile web demo, not an App Store build. Each phone has i
 
 To verify the built phone package locally: run `npm run build:web`, then `npm run preview:web` in a separate terminal, then `npm run test:phone` (set `BROWSER_EXECUTABLE` when using a system Chromium). The default test checks the same repository subpath used by Pages, including offline service-worker reload.
 
-To update the site from the source checkout, run `npm ci` then `npm run publish:web`. This builds the standalone/PWA artifacts and pushes the site to the existing gh-pages branch without force-pushing. Pages is now serving the site. If it ever needs reconfiguration, use repository Settings → Pages → Deploy from a branch → gh-pages / (root).
+For the current Site, run `npm run build:web`, copy `web-dist/` into the configured `dist/` directory, commit and push the source, then publish that exact commit with `.openai/hosting.json` and `dist/`. The legacy `npm run publish:web` command targets the upstream GitHub Pages branch rather than the restored private Site.
 
 ## Calendar and guest-profile flow
 
@@ -38,9 +46,21 @@ Choose **Code → Download ZIP** on GitHub, extract the archive, and open **Buck
 
 This is a local prototype, not a native iOS/Android release or a multiplayer service. Fictional players and sample games are labeled. Changes stay in browser storage; chats are not delivered to other people.
 
+## Game-plan home and navigation
+
+The next run is the earliest future Arizona game you have joined. Otherwise it is an available game within 30 miles of your current or manually selected area. A verified court photograph breaks ties at the same start time. Empty areas offer “Find a court” without substituting a distant venue. The date uses America/Phoenix; scheduling continues to show its explicit timezone. The original photo credit links to the publisher, and its publication date is not presented as a capture date.
+
+Guests see blank personal progress until signing in. Sessions and PPG are calculated from the current local profile; the optional fictional 90-day demo is labeled and stored separately. “View all games” expands the upcoming/history list and scheduling action. The profile button, header bell, theme control, and App menu remain accessible across tabs.
+
+| Selected light layout | Dark layout |
+| --- | --- |
+| ![Game plan light](docs/game-plan-light.png) | ![Game plan dark](docs/game-plan-dark.png) |
+
+See [design QA](design-qa.md) for source comparison, corrections, and validation.
+
 ## Opening sequence
 
-First-time guests see a two-step welcome with profile benefits and a guest skip. Returning visitors open directly to the map. The app requests browser location permission to center on the user, with a blue location dot and accuracy circle. If permission is denied or location fails, an explicit status explains the fallback Phoenix map and manual search remains available. No profile form is mandatory. The default **All basketball parks** mode keeps parks selectable even when no games are scheduled. **Games with open spots** is a separate optional filter. Tap its basketball pin, then tap the court name in the popup for court details, games, and teams. The popup and bottom bar both offer **Start a game**. In Games with open spots mode, time and play-style filters remove pins for full, past, cancelled, or nonmatching games. In All basketball parks mode, game availability does not hide a venue. Availability here does not mean verified live court occupancy. Search opens a court-search overlay with time/play-style filters. My Games, Profile, and the theme toggle are in the hamburger menu.
+First-time guests see a two-step welcome with profile benefits and a guest skip. Returning visitors open directly to the game-plan home. The Courts tab opens the full-screen map. The app requests browser location permission to center on the user, with a blue location dot and accuracy circle. If permission is denied or location fails, an explicit status explains the fallback Phoenix map and manual search remains available. No profile form is mandatory. The default **All basketball parks** mode keeps parks selectable even when no games are scheduled. **Games with open spots** is a separate optional filter. Tap its basketball pin, then tap the court name in the popup for court details, games, and teams. The popup and bottom bar both offer **Start a game**. In Games with open spots mode, time and play-style filters remove pins for full, past, cancelled, or nonmatching games. In All basketball parks mode, game availability does not hide a venue. Availability here does not mean verified live court occupancy. Search opens a court-search overlay with time/play-style filters. Games, Chat, and Stats have bottom tabs. Profile is in the header; the App menu includes showcase, sharing, and appearance actions.
 
 Guests can browse public court/game details. Joining a team, organizing a game, accessing personal screens, and chatting require the clearly labeled **local demo sign-in**. Enter a display name to exercise that sequence, or continue browsing. No account is created, no password is collected, and there is no authentication server. The demo remembers a signed-in profile across reloads and new tabs on the same browser/device; sign-out is in Profile and prevents automatic re-entry. Existing named local profiles migrate to the returning-player flow. Device-local data is retained after sign-out. This UI gate is not a security boundary.
 
@@ -60,7 +80,7 @@ Court details show the city source, retrieval date, mapped court count, address,
 
 Sources: [City public GIS](https://services.arcgis.com/cfKakmeHE95cgeEK/arcgis/rest/services/ParksOpenData/FeatureServer), basketball layer **0**, park layer **10**; ArcGIS item owned by **City_of_Phoenix**. `public/data/phoenix-courts.js` records retrieval metadata and the public source URL. Update it using `npm run refresh:courts`, then rebuild/publish. The refresh was exercised against the real service and returned 125 locations/155 court records. Node 24's environment-proxy support is used automatically when available; it does not disable TLS verification.
 
-Coverage is currently strongest for **Phoenix city limits**. Scottsdale/Austin retain starter venues; all areas can supplement saved entries by automatically requesting tagged basketball courts inside the visible map bounds using OpenStreetMap/Overpass, after a short debounce. Lookups require zoom level 11 or closer and a bounded area. Older requests are aborted when the camera changes; provider failures retain saved results with an explicit status. That external lookup has returned errors/timeouts and is not guaranteed complete. This release does not claim complete coverage of all metro cities or the world. Existing cached court references, saved games, and chat groups are preserved when a duplicate location gets a city-backed entry.
+Coverage is currently strongest for **Phoenix city limits**. Scottsdale retains a starter venue. Legacy out-of-state records remain in stored data for compatibility but are excluded from this Arizona edition. Arizona areas can supplement saved entries by automatically requesting tagged basketball courts inside the visible map bounds using OpenStreetMap/Overpass, after a short debounce. Lookups require zoom level 11 or closer and a bounded area. Older requests are aborted when the camera changes; provider failures retain saved results with an explicit status. That external lookup has returned errors/timeouts and is not guaranteed complete. This release does not claim complete coverage of all metro cities or the world. Existing cached court references, saved games, and chat groups are preserved when a duplicate location gets a city-backed entry.
 
 | All Phoenix locations | Search directory | City-backed court details |
 | --- | --- | --- |
@@ -68,12 +88,12 @@ Coverage is currently strongest for **Phoenix city limits**. Scottsdale/Austin r
 
 ## What you can try
 
-- **Courts:** search Phoenix, Scottsdale, or Austin; select a sample court, tap its marker/popup, and pan/zoom the map with geographically anchored pins; open court details, directions, scheduled games, or its lasting community chat. Geolocation centers the map on the user; the visible map bounds filter both court pins and search results. The location-arrow button recenters at any time. Destination search moves the map, while court-name search narrows results inside that area.
+- **Courts:** search Phoenix, Scottsdale, or another Arizona destination; select a sample court, tap its marker/popup, and pan/zoom the map with geographically anchored pins; open court details, directions, scheduled games, or its lasting community chat. Geolocation centers the map on the user; the visible map bounds filter both court pins and search results. The location-arrow button recenters at any time. Destination search moves the map, while court-name search narrows results inside that area.
 - **Scheduled games:** join the roster, select/switch between capacity-limited Team A/B, and name your team within that game. Create a future game with a court, player limit, play style, and meeting/access notes.
 - **Chat:** separate court-community and game-group conversations, plus a central chat list.
 - **My stats:** log and delete personal session records for points, rebounds, and assists; see self-reported averages and history.
 - **Profiles:** open a player from a roster. Fictional examples demonstrate public and private profiles/stats. Your profile details and stats have independent sharing settings, both off by default; preview what others would see. Display names remain visible on rosters.
-- **Appearance:** use the hamburger-menu toggle or select Light, Dark, or Use device setting in Profile, then save. Themes persist. The street basemap retains its readable provider styling in both themes. The map footer credits OpenStreetMap tiles; Phoenix location details separately credit the city directory.
+- **Appearance:** use the header or App-menu toggle, or select Light, Dark, or Use device setting in Profile, then save. Themes persist. The street basemap retains its readable provider styling in both themes. The map footer credits OpenStreetMap tiles; Phoenix location details separately credit the city directory.
 
 ## Screenshots
 
@@ -99,7 +119,7 @@ npm start
 Open the server on port 3000 (`PORT` overrides it). The server uses Node built-ins. Leaflet 1.9.4 is pinned and its licensed distribution is bundled in public/vendor/leaflet so the standalone artifact needs no CDN scripts. Playwright is a development-only dependency.
 
 ```sh
-npm test                 # HTTP, team-capacity, privacy projection, and stats tests
+npm test                 # HTTP, game-plan selection, calendar, capacity, privacy, and stats tests
 npm run build            # regenerate the downloadable BucketList.html
 ```
 
@@ -112,7 +132,9 @@ PORT=3090 npm start
 APP_URL=http://127.0.0.1:3090 BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:browser
 ```
 
-If no Chromium is installed, run `npx playwright install chromium` and omit `BROWSER_EXECUTABLE`. The browser suite checks automatic map opening, guest browsing, local-demo sign-in gates/cancel/resume/sign-out, and team switching/naming, separate chats, profile visibility, stats, persistence, destination search, themes, responsive overflow, and the standalone artifact. Run `APP_URL=http://127.0.0.1:3092 BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:showcase` with a server on 3092 for the populated-showcase and fixture-directory regression. Marker projection, keyboard activation, viewport filtering, and availability filters are checked; run `APP_URL=http://127.0.0.1:3097 npm run test:location` against a server on 3097 for welcome steps, permitted/denied geolocation, pan/zoom/list agreement, destination discovery, recenter, cross-tab profile restoration, and explicit sign-out. External tile availability is not asserted because the cloud environment blocks the tile provider.
+If no Chromium is installed, run `npx playwright install chromium` and omit `BROWSER_EXECUTABLE`. The browser suite checks opening Courts from the new home, guest browsing, local-demo sign-in gates/cancel/resume/sign-out, and team switching/naming, separate chats, profile visibility, stats, persistence, destination search, themes, responsive overflow, and the standalone artifact. Run `APP_URL=http://127.0.0.1:3092 BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:showcase` with a server on 3092 for the populated-showcase and fixture-directory regression. Marker projection, keyboard activation, viewport filtering, and availability filters are checked; run `APP_URL=http://127.0.0.1:3097 npm run test:location` against a server on 3097 for welcome steps, permitted/denied geolocation, pan/zoom/list agreement, destination discovery, recenter, cross-tab profile restoration, and explicit sign-out. External tile availability is not asserted because the cloud environment blocks the tile provider.
+
+The new home-screen regression is `APP_URL=http://127.0.0.1:3090 node tests/game-plan-browser.cjs`; it checks the next run, guest/sign-in/join, roster and stats updates, four tabs, map center, showcase isolation, saved theme, and responsive widths. `tests/appearance-notices.cjs` covers location-scoped notifications and keyboard dismissal.
 
 ## Maps and privacy boundaries
 

@@ -1,3 +1,4 @@
+import { arizonaBounds, isInArizona } from './arizona.js';
 // Overpass outputs each park followed by its tagged basketball features.
 export function normalizeParkDirectory(elements, city='') {
  const found=new Map();let current=null;
@@ -43,6 +44,17 @@ export async function locateDestination(query,signal,fetcher=fetch){
  return {lat,lng};
 }
 
+export async function locateArizonaDestination(query,signal,fetcher=fetch){
+ const {west,north,east,south}=arizonaBounds;
+ const params=new URLSearchParams({format:'json',limit:'5',countrycodes:'us',bounded:'1',viewbox:[west,north,east,south].join(','),q:query+', Arizona, USA'});
+ const response=await fetcher('https://nominatim.openstreetmap.org/search?'+params,{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(10000)]):AbortSignal.timeout(10000)});
+ if(!response.ok)throw Error('Arizona location search is unavailable. Try a saved court name or use Near me.');
+ const places=await response.json();
+ const place=Array.isArray(places)&&places.find(p=>isInArizona(Number(p.lat),Number(p.lon)));
+ if(!place)throw Error('Choose a city, address, or court in Arizona.');
+ return {lat:Number(place.lat),lng:Number(place.lon)};
+}
+
 export function areaCourtQuery({south,west,north,east}){
  if(![south,west,north,east].every(Number.isFinite)||south>=north||west>=east||south< -85||north>85||west< -180||east>180||north-south>.6||east-west>.8)throw Error('Zoom in to search this map area.');
  return `[out:json][timeout:15];nwr["sport"~"(^|;)basketball(;|$)"]["access"!="private"](${south},${west},${north},${east});out tags center;`;
@@ -56,10 +68,11 @@ export function normalizeAreaCourts(elements){
  return [...found.values()];
 }
 
-export async function discoverCourtsInBounds(bounds,signal,fetcher=fetch){
- const query=areaCourtQuery(bounds);let lastError;
+export async function discoverCourtsInBounds(bounds,signal,fetcher=fetch,arizonaOnly=false){
+ let query=areaCourtQuery(bounds);let lastError;
+ if(arizonaOnly)query=query.replace('nwr[','area["ISO3166-2"="US-AZ"]["admin_level"="4"]->.az;nwr(area.az)[');
  for(const endpoint of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
-  try{const response=await fetcher(endpoint+'?data='+encodeURIComponent(query),{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(20000)]):AbortSignal.timeout(20000)});if(!response.ok)throw Error('Court directory unavailable.');const result=await response.json();if(result.remark||!Array.isArray(result.elements))throw Error('Incomplete directory response.');return normalizeAreaCourts(result.elements).filter(c=>c.lat>=bounds.south&&c.lat<=bounds.north&&c.lng>=bounds.west&&c.lng<=bounds.east);}catch(error){if(signal?.aborted)throw error;lastError=error;}
+  try{const response=await fetcher(endpoint+'?data='+encodeURIComponent(query),{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(20000)]):AbortSignal.timeout(20000)});if(!response.ok)throw Error('Court directory unavailable.');const result=await response.json();if(result.remark||!Array.isArray(result.elements))throw Error('Incomplete directory response.');return normalizeAreaCourts(result.elements).filter(c=>c.lat>=bounds.south&&c.lat<=bounds.north&&c.lng>=bounds.west&&c.lng<=bounds.east&&(!arizonaOnly||isInArizona(c.lat,c.lng)));}catch(error){if(signal?.aborted)throw error;lastError=error;}
  }
  throw lastError||Error('Court directory unavailable.');
 }
