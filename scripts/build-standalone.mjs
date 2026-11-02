@@ -1,3 +1,4 @@
+import { PUBLIC_APP_URL } from '../public/site-config.js';
 import QRCode from 'qrcode';
 import {readFile,writeFile} from 'node:fs/promises';
 let html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
@@ -5,7 +6,7 @@ const leafletJS=await readFile(new URL('../public/vendor/leaflet/leaflet.js',imp
 const leafletCSS=await readFile(new URL('../public/vendor/leaflet/leaflet.css',import.meta.url),'utf8');
 const favicon='data:image/svg+xml,'+encodeURIComponent(await readFile(new URL('../public/icons/bucketlist.svg',import.meta.url),'utf8'));
 const apple='data:image/png;base64,'+(await readFile(new URL('../public/icons/icon-180.png',import.meta.url))).toString('base64');
-const qrData=await QRCode.toDataURL('https://bucketlist-recovered-oct29.adoblake.chatgpt.site',{width:600,margin:3,errorCorrectionLevel:'M'});
+const qrData=await QRCode.toDataURL(PUBLIC_APP_URL,{width:600,margin:3,errorCorrectionLevel:'M'});
 html=html.replace('href="/icons/bucketlist.svg"','href="'+favicon+'"').replace('href="/icons/icon-180.png"','href="'+apple+'"').replace('</head>','<script>window.BUCKETLIST_QR_DATA='+JSON.stringify(qrData)+'</script></head>');
 const css=await readFile(new URL('../public/styles.css',import.meta.url),'utf8');
 const interFont='data:font/woff2;base64,'+(await readFile(new URL('../public/fonts/inter-latin-variable.woff2',import.meta.url))).toString('base64');
@@ -13,6 +14,7 @@ const gamePlanCSS=(await readFile(new URL('../public/game-plan.css',import.meta.
 html=html.replace('<link rel="stylesheet" href="/game-plan.css">','<style>'+gamePlanCSS+'</style>');
 const embeddedCourtPhoto='data:image/jpeg;base64,'+(await readFile(new URL('../public/photos/encanto-courts.jpg',import.meta.url))).toString('base64');
 const courtPhotoCode=(await readFile(new URL('../public/court-photos.js',import.meta.url),'utf8')).replace(/^export /gm,'').replace("'./photos/encanto-courts.jpg'",JSON.stringify(embeddedCourtPhoto));
+const siteConfigCode=(await readFile(new URL('../public/site-config.js',import.meta.url),'utf8')).replace(/^export /gm,'');
 const gamePlanCode=(await readFile(new URL('../public/game-plan.js',import.meta.url),'utf8')).replace(/^export /gm,'').replace(/^import .*?;\n/gm,'');
 const uiIconsCode=(await readFile(new URL('../public/ui-icons.js',import.meta.url),'utf8')).replace(/^export /gm,'');
 const arizonaCode=(await readFile(new URL('../public/arizona.js',import.meta.url),'utf8')).replace(/^export /gm,'');
@@ -28,7 +30,7 @@ const clustersCSS=await readFile(new URL('../public/vendor/markercluster/MarkerC
 const clustersLicense=await readFile(new URL('../public/vendor/markercluster/MIT-LICENCE.txt',import.meta.url),'utf8');
 html=html.replace('<link rel="stylesheet" href="/markercluster.css">','<style>'+clustersCSS+'</style>').replace('<script src="/markercluster.js"></script>','<script>'+clustersJS+'</script>');
 const app=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/^import .*?;\n/gm,'');
-html=html.replace('<link rel="stylesheet" href="/leaflet.css">','<style>'+leafletCSS+'</style>').replace('<script src="/leaflet.js"></script>','<script>'+leafletJS.replaceAll('</script','<\\/script')+'</script>').replace('<link rel="stylesheet" href="/styles.css">','<style>'+css+'</style>').replace('<script type="module" src="/app.js"></script>','').replace('</body>','<script>'+courtPhotoCode+'\n'+arizonaCode+'\n'+locationCode+'\n'+domain+'\n'+directory+'\n'+demo+'\n'+schedule+'\n'+cityData+'\n'+phoenixData+'\n'+gamePlanCode+'\n'+uiIconsCode+'\n'+app+'</script></body>');
+html=html.replace('<link rel="stylesheet" href="/leaflet.css">','<style>'+leafletCSS+'</style>').replace('<script src="/leaflet.js"></script>','<script>'+leafletJS.replaceAll('</script','<\\/script')+'</script>').replace('<link rel="stylesheet" href="/styles.css">','<style>'+css+'</style>').replace('<script type="module" src="/app.js"></script>','').replace('</body>','<script>'+siteConfigCode+'\n'+courtPhotoCode+'\n'+arizonaCode+'\n'+locationCode+'\n'+domain+'\n'+directory+'\n'+demo+'\n'+schedule+'\n'+cityData+'\n'+phoenixData+'\n'+gamePlanCode+'\n'+uiIconsCode+'\n'+app+'</script></body>');
 html='<!-- Leaflet 1.9.4 license\n'+await readFile(new URL('../public/vendor/leaflet/LICENSE',import.meta.url),'utf8')+'\n-->\n'+html;
 html='<!-- Leaflet.markercluster MIT license\n'+clustersLicense+'\n-->\n'+html;
 html=html.replace(/\r\n/g,'\n').replace(/[ \t]+$/gm,'');

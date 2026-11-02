@@ -1,8 +1,8 @@
+import { GITHUB_REPOSITORY_URL } from '../public/site-config.js';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {mkdtemp,cp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';import {join} from 'node:path';
-const root=new URL('../',import.meta.url).pathname;
-const remote=execFileSync('git',['remote','get-url','origin'],{cwd:root,encoding:'utf8'}).trim();
+const remote=GITHUB_REPOSITORY_URL;
 const stage=await mkdtemp(join(tmpdir(),'bucketlist-pages-'));
 try{
  execFileSync('git',['clone','--branch','gh-pages','--depth','1','--single-branch',remote,stage],{stdio:'inherit'});

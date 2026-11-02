@@ -4,7 +4,9 @@ A mobile web prototype for **find a court → join a scheduled game → set up y
 
 ## Put it on your phone
 
-**Open the restored private Arizona app: https://bucketlist-recovered-oct29.adoblake.chatgpt.site/**
+**Prepared public address (awaiting repository rename): https://adoblake.github.io/bucketlist/**
+
+Source: https://github.com/adoblake/bucketlist. The private working preview remains at https://bucketlist-recovered-oct29.adoblake.chatgpt.site/.
 
 Court photos: court detail sheets now show aerial photographs centered on each venue’s stored coordinates, fetched from Esri World Imagery. Capture dates and provider credits appear when the source supplies them. Encanto Park also offers a verified basketball-court photograph from City of Phoenix Parks and Recreation; its publication date is distinct from the unknown capture date. Image errors offer retry and Maps/Street View links. No generic image is substituted for an unknown venue. Aerial images require Internet access and represent the provider’s dated photography.
 
@@ -14,7 +16,7 @@ Appearance and location updates: the header and menu both offer Light/Dark mode,
 
 Arizona edition: court search, new game venues, and live lookups stay within Arizona. Device location is used only when inside the state; blocked embedded views offer a direct browser link. Share and installation links use the current app. Location failures and directory failures have separate messages and recovery actions. The saved directory contains 125 Phoenix locations; broader Arizona coverage still requires the live directory or previously saved results. No complete statewide snapshot was available during this update.
 
-The current restored app is hosted as the private Site linked above. Its build includes the install manifest, service worker, app icons, and [QR code for showing/printing](docs/share-qr.png). The older GitHub Pages publishing script remains available for the upstream repository.
+The prepared public deployment targets GitHub Pages from the `gh-pages` branch of `adoblake/bucketlist`. Activation is pending a repository rename in GitHub Settings; the connected GitHub integration rejected the automated rename with HTTP 403. Its build includes the install manifest, service worker, app icons, and [QR code for showing/printing](docs/share-qr.png). The canonical public address and repository are defined once in `public/site-config.js`; the standalone fallback, QR codes, preview path, and publisher use that configuration.
 
 - **iPhone:** open the HTTPS link in Safari → Share → Add to Home Screen. Enable Open as Web App if offered.
 - **Android:** open in Chrome → menu → Install app / Add to Home screen.
@@ -28,7 +30,7 @@ This is an installable mobile web demo, not an App Store build. Each phone has i
 
 To verify the built phone package locally: run `npm run build:web`, then `npm run preview:web` in a separate terminal, then `npm run test:phone` (set `BROWSER_EXECUTABLE` when using a system Chromium). The default test checks the same repository subpath used by Pages, including offline service-worker reload.
 
-For the current Site, run `npm run build:web`, copy `web-dist/` into the configured `dist/` directory, commit and push the source, then publish that exact commit with `.openai/hosting.json` and `dist/`. The legacy `npm run publish:web` command targets the upstream GitHub Pages branch rather than the restored private Site.
+To publish GitHub Pages, commit and push source to `main`, then run `npm run publish:web`. The publisher updates `gh-pages` in the configured GitHub repository without force-pushing. To also update the private working Site, copy `web-dist/` into `dist/`, commit and push the Site source, then publish that exact commit with `.openai/hosting.json` and `dist/`.
 
 ## Calendar and guest-profile flow
 

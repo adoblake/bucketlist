@@ -59,3 +59,9 @@ After selecting the layout, the user requested the original primary basketball-p
 `docs/brand-consistency.jpg` shows the current light/dark header and stacked sign-in treatment. `docs/game-plan-light.png` and `docs/game-plan-dark.png` reflect the updated brand. Earlier option-2 comparisons above record the layout before this later user-requested brand restoration.
 
 The focused browser review passes: matching original pin paths in each brand surface, consistent wordmark spelling and contrast, header fit at 320/390/768/1280 pixels, small-screen welcome dismissal, correct dialog labeling, and no page errors. The existing game-plan browser regression also passes with the updated brand, covering sign-in, team participation, roster/stats, navigation, saved themes, and data isolation. Build and syntax checks pass. No new tests were added for this visual correction.
+
+## Public URL update — November 2, 2026
+
+The selected public address is `https://adoblake.github.io/bucketlist/`. The prepared deployment targets `adoblake/bucketlist`; activation is pending the repository owner renaming `making-bucketlist` in GitHub Settings. The GitHub integration rejected the automated rename with HTTP 403 (`Resource not accessible by integration`). One shared site configuration supplies the standalone fallback, both QR-code generators, the preview subpath, and the Pages publisher. The hosted app continues to derive its ordinary share links from its current origin and path. The private working Site remains owner-only.
+
+Validation: the build and all 35 Node tests pass. The mobile `/bucketlist/` regression passes for the Game Plan opening, primary branding, directory, manifest/icons/QR assets, service-worker control, offline reload/showcase, install help, and subpath-aware sharing.

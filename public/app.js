@@ -1,3 +1,4 @@
+import { PUBLIC_APP_URL } from './site-config.js';
 import { uiIcon } from './ui-icons.js';
 import { planMiles, selectPlanGame, gamePlanTiming, gamePlanToday } from './game-plan.js';
 import { mountCourtMedia, mountCourtHero, groundPhotoForCourt } from './court-photos.js';
@@ -340,7 +341,7 @@ function showSessionStats(id){const g=gameById(id),s=state.stats.find(s=>s.gameI
 
 function guestProfilePrompt(){return `<section class="guest-profile-prompt"><strong>Meet the crew. Keep your spot.</strong><p>You can browse this game as a guest. A player profile unlocks team participation, player profiles, group chat, and your personal stats history.</p><button type="button" class="primary full" data-create-profile>Create your player profile</button></section>`;}
 
-const publicAppUrl=location.protocol==='file:'?'https://bucketlist-recovered-oct29.adoblake.chatgpt.site':new URL('./',location.href).href;
+const publicAppUrl=location.protocol==='file:'?PUBLIC_APP_URL:new URL('./',location.href).href;
 let installPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
 function showShareApp(){showDialog('BRING YOUR CREW',`<h2>Let’s Play.</h2><p class="muted">Open Bucketlist on your phone or scan this code with another phone’s camera.</p><img class="share-qr" src="${window.BUCKETLIST_QR_DATA||new URL('share-qr.png',publicAppUrl).href}" width="210" height="210" alt="QR code opening Bucketlist"><p class="share-link"><a href="${publicAppUrl}" target="_blank" rel="noopener noreferrer">${publicAppUrl}</a></p><div class="card-actions"><button id="native-share" class="primary">Share link</button><button id="copy-share" class="secondary">Copy link</button></div><p class="note">Interactive demo with fictional players and browser-local data. Changes and messages are not shared between phones.</p>`);$('#native-share').onclick=async()=>{try{if(navigator.share)await navigator.share({title:'Bucketlist — Let’s Play.',text:'Find a court, build a team, and explore the demo.',url:publicAppUrl});else await copyAppLink();}catch(e){if(e.name!=='AbortError')toast('Use the link above to share.');}};$('#copy-share').onclick=copyAppLink;}
