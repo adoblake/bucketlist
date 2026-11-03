@@ -1,6 +1,8 @@
 # Bucketlist
 
-A mobile web prototype for **find a court → join a scheduled game → set up your team → coordinate and play**. The selected **Game Plan (option 2)** design opens to “Your game plan.” with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Four persistent tabs connect **Courts / Games / Chat / Stats**. Warm off-white, bold Inter typography, orange accents, and a matching dark theme follow the chosen reference while retaining the existing map, teams, calendar, profiles, and browser-local data.
+Bucketlist opens directly on the **Arizona court map**, with a visible court-search control and a **Map / List** switch. New and returning visitors can browse without an account. When location is permitted, the map centers on the player; otherwise the Phoenix map and manual Arizona search remain available. Four persistent tabs connect **Courts / Games / Chat / Stats**.
+
+The selected **Game Plan (option 2)** layout remains in **Games**, with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Warm off-white, bold Inter typography, orange accents, and a matching dark theme retain the original Bucketlist branding.
 
 ## Put it on your phone
 
@@ -64,6 +66,14 @@ Choose **Code → Download ZIP** on GitHub, extract the archive, and open **Buck
 
 This is a local prototype, not a native iOS/Android release or a multiplayer service. Fictional players and sample games are labeled. Changes stay in browser storage; chats are not delivered to other people.
 
+## Map opening
+
+| Court map · Light | Nearby court list | Court map · Dark |
+| --- | --- | --- |
+| ![Light map](docs/map-first-light.png) | ![Nearby list](docs/map-first-list.png) | ![Dark map](docs/map-first-dark.png) |
+
+These QA captures block external street tiles and show the neutral map fallback. The deployed app still requests OpenStreetMap tiles; tile delivery is not asserted by the browser tests.
+
 ## Game-plan home and navigation
 
 The next run is the earliest future Arizona game you have joined. Otherwise it is an available game within 30 miles of your current or manually selected area. A verified court photograph breaks ties at the same start time. Empty areas offer “Find a court” without substituting a distant venue. The date uses America/Phoenix; scheduling continues to show its explicit timezone. The original photo credit links to the publisher, and its publication date is not presented as a capture date.
@@ -78,7 +88,7 @@ See [design QA](design-qa.md) for source comparison, corrections, and validation
 
 ## Opening sequence
 
-First-time guests see a two-step welcome with profile benefits and a guest skip. Returning visitors open directly to the game-plan home. The Courts tab opens the full-screen map. The app requests browser location permission to center on the user, with a blue location dot and accuracy circle. If permission is denied or location fails, an explicit status explains the fallback Phoenix map and manual search remains available. No profile form is mandatory. The default **All basketball parks** mode keeps parks selectable even when no games are scheduled. **Games with open spots** is a separate optional filter. Tap its basketball pin, then tap the court name in the popup for court details, games, and teams. The popup and bottom bar both offer **Start a game**. In Games with open spots mode, time and play-style filters remove pins for full, past, cancelled, or nonmatching games. In All basketball parks mode, game availability does not hide a venue. Availability here does not mean verified live court occupancy. Search opens a court-search overlay with time/play-style filters. Games, Chat, and Stats have bottom tabs. Profile is in the header; the App menu includes showcase, sharing, and appearance actions.
+First-time and returning visitors open directly to the court map; there is no automatic welcome or signup dialog. Search courts and the Map/List switch stay visible above the map or court list. Detailed filters and source information expand from **Filters & court sources**, leaving nearby court cards visible sooner. The optional two-step introduction remains available under **App menu → About Bucketlist**. The logo returns to the map, and Games opens the game-plan screen. The app requests browser location permission to center on the user, with a blue location dot and accuracy circle. If permission is denied or location fails, an explicit status explains the fallback Phoenix map and manual search remains available. No profile form is mandatory. The default **All basketball parks** mode keeps parks selectable even when no games are scheduled. **Games with open spots** is a separate optional filter. Tap its basketball pin, then tap the court name in the popup for court details, games, and teams. The popup and bottom bar both offer **Start a game**. In Games with open spots mode, time and play-style filters remove pins for full, past, cancelled, or nonmatching games. In All basketball parks mode, game availability does not hide a venue. Availability here does not mean verified live court occupancy. Search opens a court-search overlay with time/play-style filters. Games, Chat, and Stats have bottom tabs. Profile is in the header; the App menu includes showcase, sharing, and appearance actions.
 
 Guests can browse public court/game details. Joining a team, organizing a game, accessing personal screens, and chatting require the clearly labeled **local demo sign-in**. Enter a display name to exercise that sequence, or continue browsing. No account is created, no password is collected, and there is no authentication server. The demo remembers a signed-in profile across reloads and new tabs on the same browser/device; sign-out is in Profile and prevents automatic re-entry. Existing named local profiles migrate to the returning-player flow. Device-local data is retained after sign-out. This UI gate is not a security boundary.
 
@@ -150,9 +160,9 @@ PORT=3090 npm start
 APP_URL=http://127.0.0.1:3090 BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:browser
 ```
 
-If no Chromium is installed, run `npx playwright install chromium` and omit `BROWSER_EXECUTABLE`. The browser suite checks opening Courts from the new home, guest browsing, local-demo sign-in gates/cancel/resume/sign-out, and team switching/naming, separate chats, profile visibility, stats, persistence, destination search, themes, responsive overflow, and the standalone artifact. Run `APP_URL=http://127.0.0.1:3092 BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:showcase` with a server on 3092 for the populated-showcase and fixture-directory regression. Marker projection, keyboard activation, viewport filtering, and availability filters are checked; run `APP_URL=http://127.0.0.1:3097 npm run test:location` against a server on 3097 for welcome steps, permitted/denied geolocation, pan/zoom/list agreement, destination discovery, recenter, cross-tab profile restoration, and explicit sign-out. External tile availability is not asserted because the cloud environment blocks the tile provider.
+If no Chromium is installed, run `npx playwright install chromium` and omit `BROWSER_EXECUTABLE`. The browser suite checks opening Courts from the new home, guest browsing, local-demo sign-in gates/cancel/resume/sign-out, and team switching/naming, separate chats, profile visibility, stats, persistence, destination search, themes, responsive overflow, and the standalone artifact. Run `APP_URL=http://127.0.0.1:3092 BROWSER_EXECUTABLE=/usr/bin/chromium npm run test:showcase` with a server on 3092 for the populated-showcase and fixture-directory regression. Marker projection, keyboard activation, viewport filtering, and availability filters are checked; run `APP_URL=http://127.0.0.1:3097 npm run test:location` against a server on 3097 for direct map opening, Map/List controls, permitted/denied geolocation, pan/zoom/list agreement, destination discovery, recenter, saved appearance, and Games/Chat navigation. External tile availability is not asserted because the cloud environment blocks the tile provider.
 
-The new home-screen regression is `APP_URL=http://127.0.0.1:3090 node tests/game-plan-browser.cjs`; it checks the next run, guest/sign-in/join, roster and stats updates, four tabs, map center, showcase isolation, saved theme, and responsive widths. `tests/appearance-notices.cjs` covers location-scoped notifications and keyboard dismissal.
+The Games-screen regression is `APP_URL=http://127.0.0.1:3090 node tests/game-plan-browser.cjs`; it checks the next run, guest/sign-in/join, roster and stats updates, four tabs, map center, showcase isolation, saved theme, and responsive widths. `tests/appearance-notices.cjs` covers location-scoped notifications and keyboard dismissal.
 
 ## Maps and privacy boundaries
 

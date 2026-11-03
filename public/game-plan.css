@@ -29,6 +29,19 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var
 .brand-tagline{font-size:var(--brand-tagline-size);font-weight:700;line-height:1.25;letter-spacing:0;color:var(--muted)}
 .brand-lockup--compact{--brand-mark-height:32px;--brand-wordmark-size:clamp(23px,7.18vw,28px);display:flex;align-items:center;gap:6px}
 .header-location{margin-top:4px}
+
+/* Court discovery is the opening view, with search and a persistent view switch. */
+.court-browse-tools{position:absolute;z-index:620;top:12px;left:18px;right:18px;display:flex;gap:8px}
+.court-search-trigger{display:flex;align-items:center;gap:9px;flex:1;min-width:0;min-height:48px;padding:10px 12px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px #0002;font-size:14px;text-align:left}
+.court-search-trigger .ui-icon{width:20px;height:20px;flex:none;fill:currentColor;stroke:none}.court-search-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.court-view-toggle{display:flex;align-items:stretch;gap:2px;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 8px #0002;flex:none}
+.court-view-toggle button{min-width:44px;min-height:44px;padding:7px 10px;background:none;color:var(--muted);border:0;border-radius:7px;font-size:13px;font-weight:700}
+.court-view-toggle button[aria-pressed=true]{background:var(--text);color:var(--bg)}
+.map-mode #refit-map{top:76px}.map-mode .app-options{top:144px}
+.map-mode .search-panel{top:72px;bottom:78px;max-height:none}
+.court-search-options{margin:14px 0;border-bottom:1px solid var(--line)}.court-search-options>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:13px;font-weight:650;color:var(--muted)}.court-search-options-body{padding-bottom:12px}.court-search-options-body .directory-mode{margin-top:0}
+.map-mode .leaflet-bottom{bottom:80px}.map-mode .map-demo{bottom:80px}
+@media(max-width:350px){.court-browse-tools{left:12px;right:12px}.court-search-trigger{font-size:13px;gap:6px;padding:9px}.court-view-toggle button{padding-left:8px;padding-right:8px}}
 .menu-brand .brand-lockup{--brand-mark-height:64px;--brand-wordmark-size:28px;--brand-tagline-size:14px;gap:6px}
 .welcome-brand{margin:4px auto 22px}
 .welcome-brand .brand-lockup{--brand-mark-height:75px;--brand-wordmark-size:32px;--brand-tagline-size:16px;gap:8px}

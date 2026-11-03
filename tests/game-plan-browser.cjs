@@ -11,7 +11,7 @@ const url=process.env.APP_URL||'http://127.0.0.1:3114';
  async function dismissUpdates(){await p.waitForTimeout(350);if(await p.locator('#location-updates').evaluate(e=>e.open))await p.locator('#dismiss-location-updates').click();}
  const nav=async tab=>{if(tab==='chats'){await p.locator('#menu-toggle').click();await p.locator('#app-menu [data-tab=chats]').click();}else await p.locator('.bottom-nav [data-tab='+tab+']').click();};
  try{
-  await p.goto(url,{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>document.querySelector('#game-plan-photo img')?.complete);await dismissUpdates();
+  await p.goto(url,{waitUntil:'domcontentloaded'});assert.equal(await p.locator('.screen:visible').getAttribute('id'),'discover-screen');await dismissUpdates();await nav('games');await p.waitForFunction(()=>document.querySelector('#game-plan-photo img')?.complete);
   assert.equal(await p.locator('.screen:visible').getAttribute('id'),'games-screen');
   assert.deepEqual(await p.locator('.bottom-nav button').allTextContents(),['Courts','Games','Chat','Stats']);
   assert.equal(await p.locator('.bottom-nav [aria-current]').getAttribute('data-tab'),'games');assert.equal(await p.locator('html').getAttribute('data-theme'),'light');
@@ -35,11 +35,11 @@ const url=process.env.APP_URL||'http://127.0.0.1:3114';
   const navTop=await p.locator('.bottom-nav').evaluate(e=>e.getBoundingClientRect().top),statsBottom=await p.locator('#view-plan-stats').evaluate(e=>e.getBoundingClientRect().bottom);assert.ok(statsBottom<=navTop,'The stats action must be above the fixed nav');
   await p.waitForFunction(()=>getComputedStyle(document.querySelector('#toast')).display==='none');await p.screenshot({path:path.join(__dirname,'../docs/game-plan-light.png')});
   await p.locator('#appearance-toggle').click();assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');await p.waitForTimeout(200);await p.screenshot({path:path.join(__dirname,'../docs/game-plan-dark.png')});
-  await p.reload({waitUntil:'domcontentloaded'});await dismissUpdates();assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');assert.equal(await p.locator('#plan-session-count').innerText(),'24');
+  await p.reload({waitUntil:'domcontentloaded'});await dismissUpdates();assert.equal(await p.locator('.screen:visible').getAttribute('id'),'discover-screen');await nav('games');assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');assert.equal(await p.locator('#plan-session-count').innerText(),'24');
   for(const width of [320,390,768,1280]){await p.setViewportSize({width,height:844});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Horizontal overflow at '+width);for(const tab of ['discover','games','chats','stats'])assert.equal(await p.locator('.bottom-nav [data-tab='+tab+']').isVisible(),true);}
   await p.setViewportSize({width:390,height:844});await p.locator('#menu-toggle').click();await p.locator('#exit-showcase').click();await nav('games');assert.equal(await p.locator('#plan-session-count').innerText(),'—');
   const retained=await p.evaluate(()=>JSON.parse(localStorage.getItem('bucketlist-demo-v2')));assert.equal(retained.stats.length,1);assert.equal(retained.profile.name,'QA Player');
   assert.deepEqual(errors,[]);
-  console.log('PASS: game-plan landing, genuine court photo, guest/sign-in/team join, data-driven roster/stats, all-games expansion, four-tab flows, sign-out privacy, demo isolation, saved theme, and responsive controls.');
+  console.log('PASS: map landing and Games-tab game plan, genuine court photo, guest/sign-in/team join, data-driven roster/stats, all-games expansion, four-tab flows, sign-out privacy, demo isolation, saved theme, and responsive controls.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

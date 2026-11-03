@@ -52,7 +52,7 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
   assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
   // A genuinely new failure is visible, but repeating it doesn't nag after dismissal.
   await page.route('**/api/interpreter?**',r=>r.abort());
-  await page.locator('#search-toggle').click();await page.locator('#find-live-parks').click();await page.locator('#close-search').click();
+  await page.locator('#search-toggle').click();await page.locator('#court-search-options summary').click();await page.locator('#find-live-parks').click();await page.locator('#close-search').click();
   await page.locator('#location-updates[open]').waitFor();assert.match(await page.locator('#coverage-status').innerText(),/live lookup unavailable/);
   await page.locator('#dismiss-location-updates').click();
   await page.locator('#search-toggle').click();await page.locator('#find-live-parks').click();await page.waitForTimeout(300);await page.locator('#close-search').click();await page.waitForTimeout(500);

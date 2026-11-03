@@ -78,3 +78,14 @@ Validation: 43 Node tests pass, including member-only access, outsider denial, r
 The final review identified and corrected a Content Security Policy omission: `worker-src self` is now allowed explicitly while scripts remain restricted to their content hash. The browser integration verifies service-worker registration without requesting notification permission. The original local game/profile/browser regression, mobile offline/install regression, and one-time update-popup regression also pass.
 
 Hosted verification confirms the D1 binding and all seven tables, healthy API, public entry page, service-worker route, and ChatGPT authorization redirect. Anonymous group-list requests receive 401. Supplying forged identity headers still produces an anonymous session; the hosting boundary strips untrusted identity. No test groups, test people, or sample messages were seeded into the live database.
+
+
+## Map opening update — November 3, 2026
+
+Bucketlist now opens on the court map for new, returning, and saved-profile visitors. The initial HTML and JavaScript agree on the visible Courts screen, avoiding a flash of the Game Plan. The welcome sequence is optional in App menu → About Bucketlist. Games retains the selected Game Plan design, and the primary brand returns to the map.
+
+Added persistent Search courts and Map/List controls, with synchronized pressed/expanded states. The list follows the same map bounds and location order. Detailed filters and source metadata expand on demand so the nearby cards appear sooner. Map attribution and demo labels sit above the fixed game action. Existing location recovery, Arizona limits, theme controls, and private Chat sign-in remain in place. Independent email signup remains paused.
+
+Validation: 50 Node tests pass. Focused browser checks pass for direct first/returning opening, permitted/denied location, centered location dot, Map/List and viewport agreement, search, recenter, stale destination responses, Games/Chat navigation, brand navigation, saved Light/Dark, and 320–1280px widths. The Games regression and the installable phone build pass, including offline reopening on the map, original branding, manifest/icons/QR, showcase data, installation help, and sharing. The full browser regression checks the existing sample-game, team, profile, chat, stats, and standalone workflows.
+
+Screenshots: `docs/map-first-light.png`, `docs/map-first-list.png`, and `docs/map-first-dark.png`. External street tiles are blocked in these QA captures; the neutral grid does not represent street imagery. No live street-tile delivery or physical-device location claim is made.
