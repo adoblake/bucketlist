@@ -8,6 +8,13 @@
       "when": 1793649544987,
       "tag": "0000_sticky_nightcrawler",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793800912257,
+      "tag": "0001_military_mentor",
+      "breakpoints": true
     }
   ]
 }

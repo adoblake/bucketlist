@@ -1,10 +1,12 @@
 import http from 'node:http';import {readFileSync} from 'node:fs';import {DatabaseSync} from 'node:sqlite';import worker from '../community-dist/dist/server/index.js';
 const database=new DatabaseSync(process.env.COMMUNITY_DB||':memory:');database.exec('PRAGMA foreign_keys=ON');
 // Loopback-only development adapter. Hosted identity is injected by Sites, never by this server.
-const sql=readFileSync(new URL('../drizzle/0000_sticky_nightcrawler.sql',import.meta.url),'utf8');
-if(!database.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='community_profiles'").get())database.exec(sql);
-function statement(sql,args=[]){return {bind(...values){return statement(sql,values);},async first(){return database.prepare(sql).get(...args)||null;},async all(){return {results:database.prepare(sql).all(...args)};},async run(){const result=database.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};}
-const env={DB:{prepare:sql=>statement(sql),async batch(statements){database.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());database.exec('COMMIT');return results;}catch(error){database.exec('ROLLBACK');throw error;}}}};
+const journal=JSON.parse(readFileSync(new URL('../drizzle/meta/_journal.json',import.meta.url),'utf8'));
+database.exec('CREATE TABLE IF NOT EXISTS local_preview_migrations (tag TEXT PRIMARY KEY)');
+for(const entry of journal.entries){if(database.prepare('SELECT tag FROM local_preview_migrations WHERE tag=?').get(entry.tag))continue;if(entry.idx===0&&database.prepare("SELECT name FROM sqlite_master WHERE name='community_profiles'").get()){}else database.exec(readFileSync(new URL('../drizzle/'+entry.tag+'.sql',import.meta.url),'utf8'));database.prepare('INSERT INTO local_preview_migrations (tag) VALUES (?)').run(entry.tag);}
+function statement(sql,args=[]){return {bind(...values){return statement(sql,values);},async first(){return database.prepare(sql).get(...args)||null;},async all(){return {results:database.prepare(sql).all(...args)};},run(){const result=database.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};}
+const localObjects=new Map();
+const env={LOCAL_PREVIEW:true,BUCKET:{async put(key,bytes){localObjects.set(key,new Uint8Array(bytes));},async get(key){const body=localObjects.get(key);return body?{body}:null;},async delete(key){localObjects.delete(key);}},DB:{prepare:sql=>statement(sql),async batch(statements){database.exec('BEGIN');try{const results=[];for(const s of statements)results.push(s.run());database.exec('COMMIT');return results;}catch(error){database.exec('ROLLBACK');throw error;}}}};
 const server=http.createServer(async(req,res)=>{try{const origin='http://127.0.0.1:'+(process.env.PORT||3120),url=new URL(req.url,origin);
  if(url.pathname==='/signin-with-chatgpt'){const returnTo=url.searchParams.get('return_to')||'/community/';res.writeHead(302,{'Set-Cookie':'community-local-user=alice; HttpOnly; SameSite=Lax; Path=/','Location':returnTo.startsWith('/')&&!returnTo.startsWith('//')?returnTo:'/community/'});res.end();return;}
  if(url.pathname==='/signout-with-chatgpt'){res.writeHead(302,{'Set-Cookie':'community-local-user=; Max-Age=0; Path=/','Location':'/community/'});res.end();return;}

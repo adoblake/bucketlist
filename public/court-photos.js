@@ -1,3 +1,4 @@
+import {COMMUNITY_APP_URL} from './site-config.js';
 const imageryService='https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer';
 const imageryAttribution='Esri, Vantor, Earthstar Geographics, and the GIS User Community';
 const aerialPhotoCache=new Map(),aerialDateCache=new Map();
@@ -11,6 +12,7 @@ const curatedCourtPhotos={
  }
 };
 export function groundPhotoForCourt(court){
+ if(court.shared&&court.photoUrl){try{const u=new URL(court.photoUrl);if(u.origin===new URL(COMMUNITY_APP_URL).origin&&/^\/api\/public\/courts\/shared-[a-f0-9-]{36}\/photo$/.test(u.pathname))return {url:u.href,sourceUrl:new URL('../play/?court='+encodeURIComponent(court.id),COMMUNITY_APP_URL).href,credit:'Court contributor',alt:'Photo of '+court.courtName+' inside '+court.parkName+', '+court.city,contributed:true};}catch{}}
  const key=String(court.city||'').toLowerCase()+':'+String(court.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
  return curatedCourtPhotos[key]||null;
 }
@@ -60,7 +62,7 @@ export async function fetchCourtImageryDate(court,widthMeters=180,{signal,fetche
 function courtPhotoDate(iso){return new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(iso+'T00:00:00Z'));}
 export function mountCourtMedia(container,court,{fetcher=fetch}={}){
  const ground=groundPhotoForCourt(court);
- let view='aerial',span=court.locationType==='park record'?420:180,ticket=0,controller=null,disposed=false,imageTimer=null;
+ let view=court.shared&&ground?'ground':'aerial',span=court.locationType==='park record'?420:180,ticket=0,controller=null,disposed=false,imageTimer=null;
  container.innerHTML='<div class="court-photo-tabs" role="group" aria-label="Court photo view"><button type="button" data-photo-view="aerial" aria-pressed="true">Aerial view</button><button type="button" data-photo-view="ground" aria-pressed="false" hidden>Court photo</button></div><figure class="court-photo"><div class="court-photo-frame"><p class="court-photo-loading" role="status">Loading court photo…</p><a class="court-photo-link" target="_blank" rel="noopener noreferrer" hidden></a><div class="court-photo-error" role="status" hidden><strong>Photo unavailable right now</strong><p>Try again or explore photos and Street View on Maps.</p><button type="button" class="secondary" data-retry-photo>Retry photo</button></div><div class="court-photo-zoom" role="group" aria-label="Aerial photo zoom"><button type="button" data-photo-closer aria-label="Zoom in on the court photo">+</button><button type="button" data-photo-wider aria-label="Show more of the park">−</button></div></div><figcaption><strong class="court-photo-name"></strong><span class="court-photo-date">Photo date unavailable</span><a class="court-photo-credit" target="_blank" rel="noopener noreferrer"></a><a class="court-photo-maps" target="_blank" rel="noopener noreferrer">Photos & Street View on Maps ↗</a></figcaption></figure>';
  const find=s=>container.querySelector(s),frame=find('.court-photo-frame'),imageLink=find('.court-photo-link'),loading=find('.court-photo-loading'),error=find('.court-photo-error'),caption=find('.court-photo-name'),date=find('.court-photo-date'),credit=find('.court-photo-credit');
  container.dataset.courtId=court.id;
@@ -86,7 +88,7 @@ export function mountCourtMedia(container,court,{fetcher=fetch}={}){
   find('.court-photo-zoom').hidden=view!=='aerial';find('[data-photo-closer]').disabled=span<=90;find('[data-photo-wider]').disabled=span>=720;
   if(view==='ground'&&ground){
    caption.textContent='Basketball courts at '+court.name;
-   date.textContent='Source published '+courtPhotoDate(ground.publishedAt)+' · capture date not provided';displayImage(ground,id);return;
+   date.textContent=ground.contributed?'Photo supplied by a player · capture date unknown':'Source published '+courtPhotoDate(ground.publishedAt)+' · capture date not provided';displayImage(ground,id);return;
   }
   caption.textContent=court.name+' · aerial view';date.textContent='Capture date unavailable';
   credit.textContent='Imagery: '+imageryAttribution+' ↗';credit.href=imageryService;

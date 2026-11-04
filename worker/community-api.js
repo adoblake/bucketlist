@@ -1,5 +1,6 @@
 import {pushGroupMessage,pushKeys,validateSubscription,sha256Text,PushError} from './push.js';
 import {createEmailAuth,normalizeEmail,EmailAuthError} from './email-auth.js';
+import {privatePlayApi,PlayError} from './play-api.js';
 const apiHeaders={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 const jsonAnswer=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:apiHeaders});
@@ -46,6 +47,7 @@ async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
    await db.prepare('INSERT INTO community_profiles (id,name,created_at,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,updated_at=excluded.updated_at').bind(user.id,name,now,now).run();return answer({profile:{id:user.id,name}});
   }
   await mustProfile(db,user.id);
+  const play=await privatePlayApi(request,env,ctx,user,{answer,bodyJson,rate});if(play)return play;
   if(path==='/api/community/groups'&&method==='GET'){
    const data=await db.prepare(`SELECT g.id,g.name,g.description,g.created_at,g.updated_at,m.role,(SELECT COUNT(*) FROM community_members x WHERE x.group_id=g.id) AS member_count,(SELECT COUNT(*) FROM community_messages x WHERE x.group_id=g.id AND x.seq>m.last_read AND x.user_id<>?) AS unread_count FROM community_groups g JOIN community_members m ON m.group_id=g.id WHERE m.user_id=? ORDER BY g.updated_at DESC,g.id`).bind(user.id,user.id).all();return answer({groups:data.results});
   }
@@ -87,7 +89,7 @@ async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
   if(path==='/api/community/push'&&method==='POST'){await rate(db,user.id,'subscribe',12,3600);const data=await bodyJson(request),sub=validateSubscription(data),id=await sha256Text(sub.endpoint);const existing=await db.prepare('SELECT user_id FROM community_push WHERE id=?').bind(id).first();if(existing&&existing.user_id!==user.id)throw new ApiError(409,'Turn alerts off, then enable them for this account.');const count=await db.prepare('SELECT COUNT(*) AS n FROM community_push WHERE user_id=?').bind(user.id).first();if(!existing&&count.n>=5)throw new ApiError(409,'Alerts are already enabled on five devices.');await db.prepare('INSERT INTO community_push (id,user_id,endpoint,p256dh,auth,created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET p256dh=excluded.p256dh,auth=excluded.auth').bind(id,user.id,sub.endpoint,sub.p256dh,sub.auth,Date.now()).run();return answer({ok:true});}
   if(path==='/api/community/push'&&method==='DELETE'){const data=await bodyJson(request);if(typeof data.endpoint!=='string')throw new ApiError(400,'Choose a device.');await db.prepare('DELETE FROM community_push WHERE endpoint=? AND user_id=?').bind(data.endpoint,user.id).run();return answer({ok:true});}
   throw new ApiError(404,'This page was not found.');
- }catch(error){if(error instanceof PushError)return answer({error:error.message},400);if(error instanceof ApiError||error instanceof EmailAuthError)return answer({error:error.message},error.status);console.error('Community request failed:',error?.message||'Unknown error');return answer({error:'We could not finish that. Your unsent message is still here. Please try again.'},503);}
+ }catch(error){if(error instanceof PushError)return answer({error:error.message},400);if(error instanceof PlayError)return answer({error:error.message,...error.details},error.status);if(error instanceof ApiError||error instanceof EmailAuthError)return answer({error:error.message},error.status);console.error('Community request failed:',error?.message||'Unknown error');return answer({error:'We could not finish that. Your unsent message is still here. Please try again.'},503);}
 }
 
 export {communityApi};

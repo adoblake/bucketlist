@@ -6,7 +6,7 @@ const assert=require('node:assert/strict');
   const context=await b.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,colorScheme:'dark',reducedMotion:'reduce'}),p=await context.newPage(),errors=[];
   p.on('pageerror',e=>errors.push(e.message));
   const url=process.env.PHONE_URL||'http://127.0.0.1:3095/bucketlist/';
-  await p.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','2026-11-02-shared-groups-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
+  await p.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','shared-courts-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
   await p.route('https://tile.openstreetmap.org/**',r=>r.abort());
   await p.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));
   const dismissUpdates=async()=>{await p.waitForTimeout(350);if(await p.locator('#location-updates').evaluate(e=>e.open))await p.locator('#dismiss-location-updates').click();};
@@ -25,7 +25,7 @@ const assert=require('node:assert/strict');
   for(const icon of manifest.icons){const r=await context.request.get(new URL(icon.src,manifestUrl).href);assert.equal(r.status(),200);assert.match(r.headers()['content-type'],/image\/png/);}
   assert.equal((await context.request.get(new URL('share-qr.png',url).href)).status(),200);
   await p.waitForFunction(()=>navigator.serviceWorker.controller!==null);
-  await context.setOffline(true);await p.reload({waitUntil:'domcontentloaded'});await p.locator('#court-map').waitFor();assert.equal(await p.locator('.screen:visible').getAttribute('id'),'discover-screen');await dismissUpdates();await p.locator('.bottom-nav [data-tab=games]').click();await p.locator('#open-plan-game').waitFor();
+  await context.setOffline(true);await p.reload({waitUntil:'domcontentloaded'});await p.locator('#court-map').waitFor();assert.equal(await p.locator('.screen:visible').getAttribute('id'),'discover-screen');await dismissUpdates();await p.locator('.bottom-nav [data-tab=games]').click();if(!await p.locator('#sample-game-plan').evaluate(e=>e.open))await p.locator('#sample-game-plan>summary').click();await p.locator('#open-plan-game').waitFor();
   await p.locator('#plan-profile').click();assert.equal(await p.locator('#plan-session-count').innerText(),'24');
   await p.locator('.bottom-nav [data-tab=stats]').click();assert.match(await p.locator('#stats-summary').innerText(),/24 sessions/);
   await context.setOffline(false);await openMenu();await p.locator('#install-app').click();assert.match(await p.locator('#details').innerText(),/Safari|Install/);await p.locator('#close-dialog').click();

@@ -7,7 +7,7 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
  const errors=[];
  const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark',reducedMotion:'reduce'});
  await context.addInitScript(()=>{
-  (localStorage.setItem('bucketlist-release-seen','2026-11-02-shared-groups-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));localStorage.getItem('bucketlist-theme')||localStorage.setItem('bucketlist-theme','dark');
+  (localStorage.setItem('bucketlist-release-seen','shared-courts-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));localStorage.getItem('bucketlist-theme')||localStorage.setItem('bucketlist-theme','dark');
   Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:20}});}}});
  });
  await context.route('https://tile.openstreetmap.org/**',r=>r.fulfill({contentType:'image/png',body:pixel}));
