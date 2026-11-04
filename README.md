@@ -2,13 +2,15 @@
 
 Bucketlist opens directly on the **Arizona court map**, with a visible court-search control and a **Map / List** switch. New and returning visitors can browse without an account. When location is permitted, the map centers on the player; otherwise the Phoenix map and manual Arizona search remain available. Four persistent tabs connect **Courts / Games / Chat / Stats**.
 
-The selected **Game Plan (option 2)** layout remains in **Games**, with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Warm off-white, bold Inter typography, orange accents, and a matching dark theme retain the original Bucketlist branding.
+Players can now use **+ Add court** to pin a specific basketball court inside an Arizona park, optionally add its photo, and host shared games there. See [court contribution and shared-game instructions](docs/shared-courts.md).
+
+The selected **Game Plan (option 2)** layout remains as an expandable sample in **Games**, with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Warm off-white, bold Inter typography, orange accents, and a matching dark theme retain the original Bucketlist branding.
 
 ## Put it on your phone
 
 **Open Bucketlist: https://adoblake.github.io/bucketlist/**
 
-Source: https://github.com/adoblake/bucketlist. Shared groups and chat: https://bucketlist-recovered-oct29.adoblake.chatgpt.site/community/.
+Source: https://github.com/adoblake/bucketlist. Shared courts and games: https://bucketlist-recovered-oct29.adoblake.chatgpt.site/play/. Shared groups and chat: https://bucketlist-recovered-oct29.adoblake.chatgpt.site/community/.
 
 Court photos: court detail sheets now show aerial photographs centered on each venue’s stored coordinates, fetched from Esri World Imagery. Capture dates and provider credits appear when the source supplies them. Encanto Park also offers a verified basketball-court photograph from City of Phoenix Parks and Recreation; its publication date is distinct from the unknown capture date. Image errors offer retry and Maps/Street View links. No generic image is substituted for an unknown venue. Aerial images require Internet access and represent the provider’s dated photography.
 
@@ -28,11 +30,11 @@ The public app is published on GitHub Pages from the `gh-pages` branch of `adobl
 
 The hosted phone test was attempted, but this cloud Chromium rejected the environment’s HTTPS proxy certificate. TLS verification was not disabled. Public HTTPS responses were independently verified using the environment’s trusted CA bundle, and mobile subpath/manifest/offline behavior passed against the same build on a local test server. A physical iPhone/Android installation has not been tested.
 
-The court/game/stat screens remain an installable browser-local demo. Shared groups and chat use a real hosted database and authenticated accounts, so group membership and messages work across devices. No local demo people or conversations are uploaded to the shared service.
+Player-added court pins, photos, shared games, group membership, and messages use the hosted service and persist across devices. The sample game-plan, calendar, player, and stat tools remain labelled device-local demonstrations. No sample people or conversations are uploaded.
 
 To verify the built phone package locally: run `npm run build:web`, then `npm run preview:web` in a separate terminal, then `npm run test:phone` (set `BROWSER_EXECUTABLE` when using a system Chromium). The default test checks the same repository subpath used by Pages, including offline service-worker reload.
 
-To publish GitHub Pages, commit and push source to `main`, then run `npm run publish:web`. The publisher updates `gh-pages` in the configured GitHub repository without force-pushing. To update the shared community service, run `npm run build:community`, commit and push the Site source, then package the contents of `community-dist/` (including `.openai/` and `dist/`) and publish that exact commit. The Worker manifest declares the `DB` D1 binding; migrations are included under `dist/.openai/drizzle/`. Do not package the frontend `dist/` snapshot as the community Worker.
+To publish GitHub Pages, commit and push source to `main`, then run `npm run publish:web`. The publisher updates `gh-pages` in the configured GitHub repository without force-pushing. To update the shared community service, run `npm run build:community`, commit and push the Site source, then package the contents of `community-dist/` (including `.openai/` and `dist/`) and publish that exact commit. The Worker manifest declares the `DB` D1 and `BUCKET` R2 bindings; migrations are included under `dist/.openai/drizzle/`. Do not package the frontend `dist/` snapshot as the community Worker.
 
 ## Shared groups and chat
 
@@ -50,9 +52,9 @@ The community UI and API share one origin to use platform-owned authentication s
 
 For local development: `npm run build:community`, then `PORT=3120 node scripts/community-local.mjs`. This loopback-only adapter simulates account identity and uses local SQLite; it is excluded from the deployed Worker. `npm test` covers server permissions and Web Push crypto. `node tests/community-browser.cjs` checks separate browser identities against that local preview. Generate future schema changes with `npm run db:generate`; never modify already-applied migrations.
 
-## Calendar and guest-profile flow
+## Sample calendar and guest-profile flow
 
-Game creation uses a seven-day date strip, previous/next week, optional date jump (180-day planning horizon), Morning/Afternoon/Evening lists, and 30-minute start intervals. Choose a 30/60/90/120-minute duration, confirm the time range, and review it in the game form. Back/cancel preserves form fields and the previously confirmed time. Past times are hidden/rejected; month/year/leap-day and DST boundaries are tested. Times explicitly use the device's timezone, not an inferred park timezone. Start/end instants and duration persist and appear in game views. Proposed ranges are not court reservations or verified park hours.
+The sample scheduler uses a seven-day date strip, previous/next week, optional date jump (180-day planning horizon), Morning/Afternoon/Evening lists, and 30-minute start intervals. Choose a 30/60/90/120-minute duration, confirm the time range, and review it in the game form. Back/cancel preserves form fields and the previously confirmed time. Past times are hidden/rejected; month/year/leap-day and DST boundaries are tested. Times explicitly use the device's timezone, not an inferred park timezone. Start/end instants and duration persist and appear in game views. Proposed ranges are not court reservations or verified park hours.
 
 Guests can browse parks, basic game details, play style, and roster counts. Player identities, personal stats, team participation, and messages require a local demo profile. Contextual prompts explain crew/team continuity, chat, stats, and privacy; a populated showcase can be explored before creating a profile. The prototype profile is saved only in the browser and is not a secure online account. Production enforcement needs authenticated server authorization.
 
@@ -64,7 +66,7 @@ Guests can browse parks, basic game details, play style, and roster counts. Play
 
 Choose **Code → Download ZIP** on GitHub, extract the archive, and open **BucketList.html** in your browser. The styles and scripts are included in that file. Street map tiles need Internet access. The map uses Leaflet/OpenStreetMap so our basketball pins can be geographically anchored. Google Maps remains available for directions. If tiles are blocked, a status message explains that the court pins remain available; no fake street geography is shown.
 
-This is a local prototype, not a native iOS/Android release or a multiplayer service. Fictional players and sample games are labeled. Changes stay in browser storage; chats are not delivered to other people.
+Shared courts, games, groups, and chat work across devices through the hosted service. The fictional players, sample game plan, and sample conversations remain labelled device-local demos. This is a web app; native iOS/Android packaging is separate.
 
 ## Map opening
 
@@ -170,7 +172,7 @@ The map uses Leaflet 1.9.4, Leaflet.markercluster 1.5.3, and OpenStreetMap stree
 
 Phoenix coordinates and amenity labels come from city records; starter-venue coordinates elsewhere remain unverified. Current access, hours, occupancy, and conditions are not verified. All basketball parks is the default directory mode. The separate Games with open spots mode uses future scheduled games and selected day/style. Neither mode claims live court occupancy. Self-reported sample availability is not a court reservation. In Games with open spots, pins and list both exclude courts without a matching game; switch to All basketball parks to see those venues.
 
-Precise user coordinates stay in memory and are not saved in the profile; there is no background tracking. Visible map bounds are sent to Overpass for area discovery for the visible area, and destination text goes to Nominatim. Normal map viewport tile requests go to OpenStreetMap; opening directions sends the chosen public venue to Google. Stats/profile visibility remains a local UI demonstration, not server authorization. The separate shared community service enforces its group membership and message permissions on the server. Shared game reservations and stats synchronization remain future work.
+Precise user coordinates stay in memory and are not saved in the profile; there is no background tracking. Visible map bounds are sent to Overpass for area discovery for the visible area, and destination text goes to Nominatim. Normal map viewport tile requests go to OpenStreetMap; opening directions sends the chosen public venue to Google. Stats/profile visibility remains a local UI demonstration, not server authorization. The separate shared community service enforces its group membership and message permissions on the server. Shared game rosters enforce capacity on the server. Court reservations and personal-stat synchronization remain future work.
 
 See [UX decisions and standard references](docs/UX-DECISIONS.md) for the applied conventions, source-access limitations, and remaining production work. The new published Figma site also could not be retrieved through the cloud proxy.
 
@@ -182,6 +184,6 @@ See [UX decisions and standard references](docs/UX-DECISIONS.md) for the applied
 
 ## Next production milestones
 
-Shared games and atomic capacity reservations; synchronized personal stats and profiles; host controls/cancellation; waitlists; broader reporting and moderation; verified courts/accessibility; native packaging and physical-device push testing.
+Synchronized personal stats and profiles; waitlists; broader reporting and moderation; verified courts/accessibility; native packaging and physical-device push testing.
 
 The business plan and layout screenshot informed this version. The Figma links and reference GitHub repository were inaccessible. See [PRODUCT.md](PRODUCT.md) for the product direction.
