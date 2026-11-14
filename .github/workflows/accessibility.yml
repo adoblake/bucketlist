@@ -1,0 +1,30 @@
+name: Accessibility
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wcag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false @axe-core/playwright@4
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:web && npm run build:community
+      - run: node --test --test-isolation=none tests/*.test.js
+      - run: node tests/accessibility.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: accessibility-report/
+          retention-days: 14
