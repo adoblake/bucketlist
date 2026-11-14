@@ -66,7 +66,7 @@ async function scan(page, name) {
     await page.locator('#sample-game-plan').evaluate(e=>e.open=true);await scan(page,'sample-games-dark');
     await page.locator('#appearance-toggle').click();await scan(page,'sample-games-light');
     await page.locator('#menu-toggle').click();await scan(page,'navigation-menu');
-    await page.locator('#menu-toggle').click();
+    await page.locator('#close-app-menu').click();
     const native=await context.newPage();native.on('pageerror',e=>errors.push(e.message));
     await native.goto(shared+'/play/?action=add&lat=33.516&lng=-111.909&park=Accessibility%20Fixture%20Park&city=Scottsdale');
     await native.getByRole('link',{name:'Continue with ChatGPT',exact:true}).waitFor();await scan(native,'play-signin');
