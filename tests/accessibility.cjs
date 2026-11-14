@@ -140,13 +140,13 @@ async function scan(page, name) {
     assert.equal(new URL(native.url()).hash,groupHash);
     const closeGroup=native.getByRole('button',{name:'Group details',exact:true});
     await closeGroup.focus();await native.keyboard.press('Enter');
-    assert.equal(await native.locator('#modal').evaluate(e=>e.open),true);
+    await native.locator('#modal').waitFor({state:'visible'});assert.equal(await native.locator('#modal').evaluate(e=>e.open),true);
     await native.keyboard.press('Escape');
     assert.equal(await closeGroup.evaluate(e=>e===document.activeElement),true);
     await native.locator('#pause-updates').click();
     assert.equal(await native.locator('#pause-updates').getAttribute('aria-pressed'),'true');
-    const bob=await browser.newContext();await bob.addCookies([{url:shared,name:'community-local-user',value:'bob'}]);
-    await bob.request.post(shared+'/api/community/profile',{data:{name:'Fixture Bob'}});
+    const bob=await browser.newContext({extraHTTPHeaders:{Origin:shared}});await bob.addCookies([{url:shared,name:'community-local-user',value:'bob'}]);
+    assert.equal((await bob.request.post(shared+'/api/community/profile',{data:{name:'Fixture Bob'}})).ok(),true);
     const groupId=groupHash.split('=')[1];
     const detail=await (await context.request.get(shared+'/api/community/groups/'+groupId)).json();
     const joined=await bob.request.post(shared+'/api/community/join',{data:{code:detail.group.invite_code}});
@@ -161,6 +161,7 @@ async function scan(page, name) {
     assert.equal(await deleteOwn.evaluate(e=>e===document.activeElement),true,'Message refresh keeps keyboard focus on the same message');
     await native.locator('#pause-updates').click();await bob.close();
     await scan(native,'chat-light');await native.locator('#theme').click();await scan(native,'chat-dark');
+    await page.locator('.bottom-nav [data-tab=discover]').click();await page.locator('#court-list-view').click();
     for(const p of [page,native]){
       await p.setViewportSize({width:320,height:844});
       assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'320px horizontal overflow: '+p.url());
