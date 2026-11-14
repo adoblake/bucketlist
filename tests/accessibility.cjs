@@ -64,7 +64,7 @@ async function scan(page, name) {
     assert.equal(await page.evaluate(()=>document.activeElement.id),'main-content');
     assert.equal(await page.evaluate(()=>location.hash),hash);
     await page.locator('#skip-court-list').focus();await page.keyboard.press('Enter');
-    assert.equal(await page.evaluate(()=>document.activeElement.id),'location');
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'location');assert.notEqual(await page.locator('#court-search-toggle').getAttribute('tabindex'),'-1','Court search remains in keyboard tab order');
     await page.locator('#close-search').click();
     assert.equal(await page.evaluate(()=>document.activeElement.id),'court-search-toggle');
     await scan(page,'map-light');
