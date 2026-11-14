@@ -85,3 +85,8 @@ h1,h2,h3,.court-card,.game-card,.plan-court-name,.plan-stats-label,.plan-address
 .leaflet-control-attribution{background:#fff!important}
 @media(max-width:350px){.plan-game-facts{grid-template-columns:1fr}.plan-fact{border-left:0;padding:8px 0}.plan-fact+ .plan-fact{border-top:1px solid var(--line)}.plan-section-heading{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Keep the draft pin visible above its instruction panel. */
+.pin-court-mode .pin-court-panel{top:auto;bottom:80px;max-height:min(260px,calc(100% - 200px))}
+.pin-court-mode .leaflet-bottom{bottom:350px}
+@media(max-height:650px){.pin-court-mode .pin-court-panel{bottom:32px;max-height:45%}.pin-court-mode .leaflet-bottom{bottom:50%}}

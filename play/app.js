@@ -3,6 +3,7 @@ import {PUBLIC_APP_URL} from '../public/site-config.js';
 (()=>{
  const $=s=>document.querySelector(s),app=$('#app'),modal=$('#modal');let me=null,intent={},map=null,marker=null,selectedGame=null,lastGameStatus=null,gameSignature='',busy=false;
 
+ document.querySelector('.skip-link').onclick=e=>{e.preventDefault();app.focus();};
  function focusPage(){const h=app.querySelector('h1')||app;h.tabIndex=-1;h.focus({preventScroll:true});}
  function focusError(form,text){const error=form.querySelector('.error');if(!error)return;error.textContent=text;error.tabIndex=-1;error.focus();}
  function preserveFocus(container){const active=document.activeElement;if(!container.contains(active))return()=>{};const key=active.dataset.focusKey,id=active.id,tag=active.tagName,text=active.textContent,href=active.getAttribute('href'),top=window.scrollY;return()=>{if(active.isConnected)return;const candidates=[...container.querySelectorAll('button,a,input,textarea,[tabindex]')];const next=candidates.find(n=>!n.disabled&&(key?n.dataset.focusKey===key:id?n.id===id:n.tagName===tag&&n.textContent===text&&n.getAttribute('href')===href));if(next)next.focus({preventScroll:true});else focusPage();window.scrollTo({top,behavior:'instant'});};}
