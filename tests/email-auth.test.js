@@ -44,8 +44,8 @@ test('verified email sessions stay in secure server cookies and can share a grou
  const f=fixture(),signedIn=await f.signIn();const id=signedIn.data.user.id;assert.match(id,/^email:/);assert.equal(signedIn.data.user.method,'email');assert.equal(signedIn.data.user.profile,null);assert.equal(signedIn.data.signOut,null);
  assert.doesNotMatch(JSON.stringify(signedIn.data),/access_token|refresh_token|player@example/);
  assert.equal((await f.request('/groups')).status,409,'display name required');
- await f.request('/profile','POST',{name:'Email player'});const g=(await f.request('/groups','POST',{name:'Email and ChatGPT crew'})).data.group;
- const nativeCookies=new Map();await f.request('/profile','POST',{name:'ChatGPT player'},{native:'friend',cookies:nativeCookies});await f.request('/join','POST',{code:g.invite_code},{native:'friend',cookies:nativeCookies});
+ await f.request('/profile','POST',{name:'Email player',acceptTerms:true});const g=(await f.request('/groups','POST',{name:'Email and ChatGPT crew'})).data.group;
+ const nativeCookies=new Map();await f.request('/profile','POST',{name:'ChatGPT player',acceptTerms:true},{native:'friend',cookies:nativeCookies});await f.request('/join','POST',{code:g.invite_code},{native:'friend',cookies:nativeCookies});
  await f.request('/groups/'+g.id+'/messages','POST',{body:'See you at the court.',clientId:'email-message-1'});
  const received=await f.request('/groups/'+g.id+'/messages','GET',undefined,{native:'friend',cookies:nativeCookies});assert.equal(received.data.messages[0].user_id,id);assert.equal(received.data.messages[0].body,'See you at the court.');
  const outsider=await f.request('/groups/'+g.id+'/messages','GET',undefined,{native:'outsider',cookies:new Map()});assert.equal(outsider.status,409);
@@ -68,7 +68,7 @@ test('session refresh reaches the browser and revocation is checked by the auth 
 });
 
 test('email signout clears the current session and does not merge or replace a native account',async()=>{
- const f=fixture();const emailId=(await f.signIn()).data.user.id;await f.request('/profile','POST',{name:'Email identity'});const saved=new Map(f.jar);
+ const f=fixture();const emailId=(await f.signIn()).data.user.id;await f.request('/profile','POST',{name:'Email identity',acceptTerms:true});const saved=new Map(f.jar);
  assert.equal((await f.request('/auth/email/signout','POST',{})).status,200);assert.equal(f.jar.size,0);assert.equal((await f.request('/me')).data.signedIn,false);assert.equal((await f.request('/me','GET',undefined,{cookies:saved})).data.signedIn,false);
  const native=await f.request('/me','GET',undefined,{native:'same-person'});assert.equal(native.data.user.id,'chatgpt:same-person');assert.notEqual(native.data.user.id,emailId);assert.equal(native.data.user.profile,null);
 });

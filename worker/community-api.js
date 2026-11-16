@@ -1,6 +1,8 @@
 import {pushGroupMessage,pushKeys,validateSubscription,sha256Text,PushError} from './push.js';
 import {createEmailAuth,normalizeEmail,EmailAuthError} from './email-auth.js';
 import {privatePlayApi,PlayError} from './play-api.js';
+import {safetyApi,deleteAccount,writeGate,isModerator,termsAccepted,TERMS_VERSION,REPORT_REASONS} from './safety.js';
+const LEGAL={privacy:'/legal/privacy',terms:'/legal/terms',deleteAccount:'/legal/delete-account'};
 const apiHeaders={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
 const jsonAnswer=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:apiHeaders});
@@ -10,7 +12,8 @@ async function bodyJson(request){if(!request.headers.get('content-type')?.starts
 const uuid=()=>crypto.randomUUID();
 function inviteToken(){return Array.from(crypto.getRandomValues(new Uint8Array(24)),v=>v.toString(16).padStart(2,'0')).join('');}
 async function rate(db,user,action,max,seconds){const now=Date.now(),window=Math.floor(now/(seconds*1000)),key=`${action}:${user}:${window}`;const row=await db.prepare('INSERT INTO community_limits (key,count,expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count').bind(key,now+seconds*2000).first();if(row.count>max)throw new ApiError(429,'You are going a little fast. Please wait a moment and try again.');if(Math.random()<.01)await db.prepare('DELETE FROM community_limits WHERE expires_at < ?').bind(now).run();}
-async function profile(db,id){return db.prepare('SELECT id,name FROM community_profiles WHERE id=?').bind(id).first();}
+async function profile(db,id){return db.prepare('SELECT id,name,terms_version,suspended_at FROM community_profiles WHERE id=?').bind(id).first();}
+const profileDTO=p=>p?{id:p.id,name:p.name}:null;
 async function mustProfile(db,id){const p=await profile(db,id);if(!p)throw new ApiError(409,'Choose your display name first.');return p;}
 async function membership(db,group,id){const m=await db.prepare('SELECT m.role,g.name,g.owner_id,g.invite_code FROM community_members m JOIN community_groups g ON g.id=m.group_id WHERE m.group_id=? AND m.user_id=?').bind(group,id).first();if(!m)throw new ApiError(403,'You need an invitation to join this group.');return m;}
 async function owned(db,group,id){const m=await membership(db,group,id);if(m.role!=='owner')throw new ApiError(403,'Only the group creator can do that.');return m;}
@@ -27,7 +30,7 @@ async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
   if(!db)throw new ApiError(503,'Groups are getting ready. Please try again shortly.');
   if(path==='/api/community/health'&&method==='GET'){await db.prepare('SELECT COUNT(*) AS ready FROM community_profiles').first();return answer({ready:true});}
   if(path==='/api/community/me'&&method==='GET'){
-   const user=await identity();return answer({signedIn:!!user,user:user?{id:user.id,method:user.method,profile:await profile(db,user.id)}:null,auth:{email:emailAuth.available},signIn:'/signin-with-chatgpt?return_to=%2Fcommunity%2F',signOut:user?.method==='email'?null:'/signout-with-chatgpt?return_to=%2Fcommunity%2F'});
+   const user=await identity(),p=user?await profile(db,user.id):null;return answer({signedIn:!!user,user:user?{id:user.id,method:user.method,profile:profileDTO(p),termsAccepted:termsAccepted(p),suspended:!!p?.suspended_at,moderator:isModerator(env,user)}:null,terms:{version:TERMS_VERSION},reportReasons:REPORT_REASONS,legal:LEGAL,auth:{email:emailAuth.available},signIn:'/signin-with-chatgpt?return_to=%2Fcommunity%2F',signOut:user?.method==='email'?null:'/signout-with-chatgpt?return_to=%2Fcommunity%2F'});
   }
   if(path==='/api/community/auth/email/signout'&&method==='POST'){await emailAuth.signOut();return answer({ok:true});}
   if((path==='/api/community/auth/email/start'||path==='/api/community/auth/email/verify')&&method==='POST'){
@@ -43,13 +46,21 @@ async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
   }
   const user=await identity();if(!user)throw new ApiError(401,'Please sign in to continue.');
   if(path==='/api/community/profile'&&method==='POST'){
-   await rate(db,user.id,'profile',12,60);const data=await bodyJson(request),name=cleanText(data.name,1,40,'Your name'),now=Date.now();
-   await db.prepare('INSERT INTO community_profiles (id,name,created_at,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,updated_at=excluded.updated_at').bind(user.id,name,now,now).run();return answer({profile:{id:user.id,name}});
+   await rate(db,user.id,'profile',12,60);const data=await bodyJson(request),name=cleanText(data.name,1,40,'Your name'),now=Date.now(),accept=data.acceptTerms===true;
+   if(!accept&&!await profile(db,user.id))throw new ApiError(400,'Please agree to the community rules to continue.');
+   await db.prepare('INSERT INTO community_profiles (id,name,created_at,updated_at,terms_version,terms_accepted_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,updated_at=excluded.updated_at,terms_version=COALESCE(excluded.terms_version,terms_version),terms_accepted_at=COALESCE(excluded.terms_accepted_at,terms_accepted_at)').bind(user.id,name,now,now,accept?TERMS_VERSION:null,accept?now:null).run();return answer({profile:{id:user.id,name}});
   }
-  await mustProfile(db,user.id);
+  if(path==='/api/community/account'&&method==='DELETE'){
+   await rate(db,user.id,'account-delete',5,3600);const data=await bodyJson(request);if(data.confirm!=='DELETE')throw new ApiError(400,'Type DELETE to confirm.');
+   const result=await deleteAccount(db,env,ctx,user.id);if(user.method==='email')await emailAuth.signOut();
+   return answer({...result,signOut:user.method==='email'?null:'/signout-with-chatgpt?return_to=%2Fcommunity%2F'});
+  }
+  if(path==='/api/community/terms'&&method==='POST'){const data=await bodyJson(request);if(data.accept!==true||data.version!==TERMS_VERSION)throw new ApiError(400,'Please accept the current community rules.');await mustProfile(db,user.id);await db.prepare('UPDATE community_profiles SET terms_version=?,terms_accepted_at=? WHERE id=?').bind(TERMS_VERSION,Date.now(),user.id).run();return answer({ok:true});}
+  const me=await mustProfile(db,user.id);writeGate(path,method,me);
+  const safety=await safetyApi(request,env,ctx,user,{answer,bodyJson,rate,membership});if(safety)return safety;
   const play=await privatePlayApi(request,env,ctx,user,{answer,bodyJson,rate});if(play)return play;
   if(path==='/api/community/groups'&&method==='GET'){
-   const data=await db.prepare(`SELECT g.id,g.name,g.description,g.created_at,g.updated_at,m.role,(SELECT COUNT(*) FROM community_members x WHERE x.group_id=g.id) AS member_count,(SELECT COUNT(*) FROM community_messages x WHERE x.group_id=g.id AND x.seq>m.last_read AND x.user_id<>?) AS unread_count FROM community_groups g JOIN community_members m ON m.group_id=g.id WHERE m.user_id=? ORDER BY g.updated_at DESC,g.id`).bind(user.id,user.id).all();return answer({groups:data.results});
+   const data=await db.prepare(`SELECT g.id,g.name,g.description,g.created_at,g.updated_at,m.role,(SELECT COUNT(*) FROM community_members x WHERE x.group_id=g.id) AS member_count,(SELECT COUNT(*) FROM community_messages x WHERE x.group_id=g.id AND x.seq>m.last_read AND x.user_id<>? AND x.user_id NOT IN (SELECT blocked_id FROM community_blocks WHERE user_id=?)) AS unread_count FROM community_groups g JOIN community_members m ON m.group_id=g.id WHERE m.user_id=? ORDER BY g.updated_at DESC,g.id`).bind(user.id,user.id,user.id).all();return answer({groups:data.results});
   }
   if(path==='/api/community/groups'&&method==='POST'){
    await rate(db,user.id,'create',6,3600);const count=await db.prepare('SELECT COUNT(*) AS n FROM community_groups WHERE owner_id=?').bind(user.id).first();if(count.n>=20)throw new ApiError(409,'You have reached the limit of 20 groups.');
@@ -66,10 +77,10 @@ async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
   if(route){
    const groupId=route[1],section=route[2],target=route[3]?decodeURIComponent(route[3]):null,member=await membership(db,groupId,user.id);
    if(!section&&method==='GET'){
-    const group=await db.prepare('SELECT id,name,description,created_at FROM community_groups WHERE id=?').bind(groupId).first(),people=await db.prepare('SELECT p.id,p.name,m.role,m.joined_at FROM community_members m JOIN community_profiles p ON p.id=m.user_id WHERE m.group_id=? ORDER BY m.joined_at,p.id').bind(groupId).all();return answer({group:{...group,role:member.role,invite_code:member.role==='owner'?member.invite_code:null},members:people.results});
+    const group=await db.prepare('SELECT id,name,description,created_at FROM community_groups WHERE id=?').bind(groupId).first(),people=await db.prepare('SELECT p.id,p.name,m.role,m.joined_at,EXISTS(SELECT 1 FROM community_blocks b WHERE b.user_id=? AND b.blocked_id=p.id) AS blocked FROM community_members m JOIN community_profiles p ON p.id=m.user_id WHERE m.group_id=? ORDER BY m.joined_at,p.id').bind(user.id,groupId).all();return answer({group:{...group,role:member.role,invite_code:member.role==='owner'?member.invite_code:null},members:people.results.map(p=>({...p,blocked:!!p.blocked}))});
    }
    if(section==='messages'&&method==='GET'){
-    const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)throw new ApiError(400,'Invalid message page.');const data=await db.prepare('SELECT m.seq,m.id,m.user_id,m.body,m.created_at,p.name FROM community_messages m JOIN community_profiles p ON p.id=m.user_id WHERE m.group_id=? AND m.seq<? ORDER BY m.seq DESC LIMIT 51').bind(groupId,before).all();return answer({messages:data.results.slice(0,50).reverse(),hasMore:data.results.length>50});
+    const before=Number(url.searchParams.get('before')||Number.MAX_SAFE_INTEGER);if(!Number.isSafeInteger(before)||before<1)throw new ApiError(400,'Invalid message page.');const data=await db.prepare('SELECT m.seq,m.id,m.user_id,m.body,m.created_at,p.name FROM community_messages m JOIN community_profiles p ON p.id=m.user_id WHERE m.group_id=? AND m.seq<? AND m.user_id NOT IN (SELECT blocked_id FROM community_blocks WHERE user_id=?) ORDER BY m.seq DESC LIMIT 51').bind(groupId,before,user.id).all();return answer({messages:data.results.slice(0,50).reverse(),hasMore:data.results.length>50});
    }
    if(section==='messages'&&method==='POST'){
     await rate(db,user.id,'message',30,60);const data=await bodyJson(request),text=cleanText(data.body,1,2000,'Message');if(typeof data.clientId!=='string'||!/^[a-zA-Z0-9-]{8,64}$/.test(data.clientId))throw new ApiError(400,'Please send your message again.');const now=Date.now();

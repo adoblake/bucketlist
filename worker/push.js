@@ -41,7 +41,7 @@ export async function pushRequest(subscription,keys,payload,fetcher=fetch){
  return fetcher(subscription.endpoint,{method:'POST',redirect:'error',headers:{Authorization:`vapid t=${text}.${signature}, k=${keys.publicKey}`,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'3600',Urgency:'normal'},body:await encryptPush(subscription,payload)});
 }
 export async function pushGroupMessage(db,groupId,senderId){
- const rows=await db.prepare('SELECT s.id,s.endpoint,s.p256dh,s.auth FROM community_push s JOIN community_members m ON m.user_id=s.user_id WHERE m.group_id=? AND s.user_id<>? LIMIT 250').bind(groupId,senderId).all();if(!rows.results.length)return;
+ const rows=await db.prepare('SELECT s.id,s.endpoint,s.p256dh,s.auth FROM community_push s JOIN community_members m ON m.user_id=s.user_id WHERE m.group_id=? AND s.user_id<>? AND NOT EXISTS (SELECT 1 FROM community_blocks b WHERE b.user_id=s.user_id AND b.blocked_id=?) LIMIT 250').bind(groupId,senderId,senderId).all();if(!rows.results.length)return;
  const keys=await pushKeys(db),payload={title:'New Bucketlist message',body:'Someone in your group sent a message. Open Bucketlist to read it.',url:'/community/#group='+groupId,tag:'group-'+groupId};
  for(let i=0;i<rows.results.length;i+=5)await Promise.all(rows.results.slice(i,i+5).map(async row=>{try{const response=await pushRequest(row,keys,payload);if(response.status===404||response.status===410)await db.prepare('DELETE FROM community_push WHERE id=?').bind(row.id).run();}catch{}}));
 }

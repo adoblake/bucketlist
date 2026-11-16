@@ -15,6 +15,13 @@
       "when": 1793800912257,
       "tag": "0001_military_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794805159543,
+      "tag": "0002_safety_and_account_deletion",
+      "breakpoints": true
     }
   ]
 }
