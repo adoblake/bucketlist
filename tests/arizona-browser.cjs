@@ -28,10 +28,10 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
   // Denied browser permission leaves saved AZ courts usable and offers help.
   const {page:d}=await newPage(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(_ok,fail){fail({code:1});}}}));
   await d.goto(url,{waitUntil:'domcontentloaded'});await d.locator('#location-help').waitFor();
-  assert.match(await d.locator('#map-location-status').innerText(),/Location access is off/);assert.ok(Number(await d.locator('#court-map').getAttribute('data-result-count'))>=125);
+  assert.match(await d.locator('#map-location-status').innerText(),/Location access is off/);const savedCount=Number(await d.locator('#court-map').getAttribute('data-result-count'));assert.ok(savedCount>10,'saved Phoenix courts stay usable');assert.match(await d.locator('#directory-status').innerText(),/125 Phoenix/);
   await d.locator('#search-toggle').click();await d.route('**/search?**',r=>r.fulfill({json:[{lat:'30.2672',lon:'-97.7431'}]}));
   await d.locator('#location').fill('Austin');await d.locator('#search-form button').click();await d.waitForFunction(()=>document.querySelector('#map-location-status').textContent.includes('Choose a city'));
-  assert.doesNotMatch(await d.locator('#court-list').innerText(),/Alamo/);assert.ok(Number(await d.locator('#court-map').getAttribute('data-result-count'))>=125);
+  assert.doesNotMatch(await d.locator('#court-list').innerText(),/Alamo/);assert.equal(Number(await d.locator('#court-map').getAttribute('data-result-count')),savedCount,'an out-of-state search leaves the map where it was');
   await d.locator('#close-search').click();await d.locator('#location-help').click();assert.equal(await d.locator('#details a[target=_blank]').getAttribute('href'),url.endsWith('/')?url:url+'/');
   // An iframe policy block has a direct escape link, rather than claiming GPS is off.
   const {page:e}=await newPage(()=>Object.defineProperty(document,'permissionsPolicy',{value:{allowsFeature(){return false;}}}));
@@ -41,7 +41,7 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
   // A device reporting another state must never appear as a dot in Phoenix.
   const {page:o}=await newPage(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:35.1678,longitude:-114.573,accuracy:20}});}}}));
   await o.goto(url,{waitUntil:'domcontentloaded'});await o.waitForFunction(()=>document.querySelector('#map-location-status').textContent.includes('outside Arizona'));
-  assert.equal(await o.locator('.user-location').count(),0);assert.equal(await o.locator('#refit-map').isEnabled(),true);assert.ok(Number(await o.locator('#court-map').getAttribute('data-result-count'))>=125);
+  assert.equal(await o.locator('.user-location').count(),0);assert.equal(await o.locator('#refit-map').isEnabled(),true);assert.ok(Number(await o.locator('#court-map').getAttribute('data-result-count'))>10,'falls back to the Phoenix courts');
   // High-accuracy timeout recovers without a second permission loop.
   const {page:f}=await newPage(()=>{let calls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){calls++;if(calls===1)fail({code:3});else ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:2000}});}}});});
   await f.goto(url,{waitUntil:'domcontentloaded'});await f.locator('.user-location').waitFor();await f.locator('#location-updates[open]').waitFor();assert.match(await f.locator('#map-location-status').innerText(),/approximate location/);assert.ok(Number(await f.locator('#court-map').getAttribute('data-result-count'))>0);

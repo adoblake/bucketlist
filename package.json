@@ -19,7 +19,9 @@
     "test:courts": "node tests/courts.cjs",
     "test:location": "node tests/location.cjs",
     "db:generate": "drizzle-kit generate",
-    "build:community": "node scripts/build-community.mjs"
+    "build:community": "node scripts/build-community.mjs",
+    "test:all": "node scripts/run-all-tests.mjs",
+    "test:safety": "node tests/safety-browser.cjs"
   },
   "engines": {
     "node": ">=22.13.0"

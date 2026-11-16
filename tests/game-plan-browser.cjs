@@ -1,4 +1,5 @@
 const {chromium}=require('playwright');
+const DOCS_OUT=process.env.UPDATE_DOCS?require('node:path').join(__dirname,'..','docs'):(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/docs';
 const assert=require('node:assert/strict');
 const path=require('node:path');
 const url=process.env.APP_URL||'http://127.0.0.1:3114';
@@ -33,8 +34,8 @@ const url=process.env.APP_URL||'http://127.0.0.1:3114';
   await p.locator('#plan-profile').click();assert.equal(await p.locator('#plan-profile').innerText(),'Demo profile');assert.equal(await p.locator('#plan-session-count').innerText(),'24');assert.match(await p.locator('#plan-stats-label').innerText(),/Demo stats/i);
   const personal=await p.evaluate(()=>JSON.parse(localStorage.getItem('bucketlist-demo-v2')));assert.equal(personal.profile.name,'QA Player');assert.equal(personal.stats.length,1);assert.equal(personal.stats[0].points,12);
   const navTop=await p.locator('.bottom-nav').evaluate(e=>e.getBoundingClientRect().top),statsBottom=await p.locator('#view-plan-stats').evaluate(e=>e.getBoundingClientRect().bottom);assert.ok(statsBottom<=navTop,'The stats action must be above the fixed nav');
-  await p.waitForFunction(()=>getComputedStyle(document.querySelector('#toast')).display==='none');await p.screenshot({path:path.join(__dirname,'../docs/game-plan-light.png')});
-  await p.locator('#appearance-toggle').click();assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');await p.waitForTimeout(200);await p.screenshot({path:path.join(__dirname,'../docs/game-plan-dark.png')});
+  await p.waitForFunction(()=>getComputedStyle(document.querySelector('#toast')).display==='none');await p.screenshot({path:DOCS_OUT+'/game-plan-light.png'});
+  await p.locator('#appearance-toggle').click();assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');await p.waitForTimeout(200);await p.screenshot({path:DOCS_OUT+'/game-plan-dark.png'});
   await p.reload({waitUntil:'domcontentloaded'});await dismissUpdates();assert.equal(await p.locator('.screen:visible').getAttribute('id'),'discover-screen');await nav('games');assert.equal(await p.locator('html').getAttribute('data-theme'),'dark');assert.equal(await p.locator('#plan-session-count').innerText(),'24');
   for(const width of [320,390,768,1280]){await p.setViewportSize({width,height:844});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Horizontal overflow at '+width);for(const tab of ['discover','games','chats','stats'])assert.equal(await p.locator('.bottom-nav [data-tab='+tab+']').isVisible(),true);}
   await p.setViewportSize({width:390,height:844});await p.locator('#menu-toggle').click();await p.locator('#exit-showcase').click();await nav('games');assert.equal(await p.locator('#plan-session-count').innerText(),'—');
