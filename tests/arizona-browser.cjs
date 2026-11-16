@@ -2,7 +2,7 @@ const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const url=process.env.APP_URL||'http://127.0.0.1:3097';
 (async()=>{
- const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||undefined,args:['--no-sandbox']});
  const errors=[];
  async function newPage(geoScript){
   const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
@@ -49,7 +49,7 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
   const boxes=await e.locator('.map-notices > :visible').evaluateAll(nodes=>nodes.map(n=>{const b=n.getBoundingClientRect();return {top:b.top,bottom:b.bottom};}));
   for(let i=1;i<boxes.length;i++)assert.ok(boxes[i].top>=boxes[i-1].bottom);
   assert.deepEqual(errors,[]);
-  await d.screenshot({path:'/workspace/work/arizona-location-help.png'});
+  await d.screenshot({path:(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/arizona-location-help.png'});
   console.log('PASS: Arizona GPS, provider failure/retry, nearby distances, permission denial, embedded recovery, out-of-state rejection, coarse fallback, current share link, and mobile notices.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

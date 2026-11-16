@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const path=require('node:path');
 const url=process.env.APP_URL||'http://127.0.0.1:3114';
 (async()=>{
- const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||undefined,args:['--no-sandbox']});
  const errors=[];const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,colorScheme:'light',timezoneId:'America/Phoenix'});
  await context.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','shared-courts-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
  await context.route('https://tile.openstreetmap.org/**',r=>r.abort());await context.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));

@@ -36,6 +36,10 @@ To verify the built phone package locally: run `npm run build:web`, then `npm ru
 
 To publish GitHub Pages, commit and push source to `main`, then run `npm run publish:web`. The publisher updates `gh-pages` in the configured GitHub repository without force-pushing. To update the shared community service, run `npm run build:community`, commit and push the Site source, then package the contents of `community-dist/` (including `.openai/` and `dist/`) and publish that exact commit. The Worker manifest declares the `DB` D1 and `BUCKET` R2 bindings; migrations are included under `dist/.openai/drizzle/`. Do not package the frontend `dist/` snapshot as the community Worker.
 
+## Google Play
+
+Bucketlist can ship to Google Play as a Trusted Web Activity once hosting, sign-in and Play policy requirements are met. See the [Google Play launch plan](docs/google-play-launch.md).
+
 ## Shared groups and chat
 
 The main **Chat** tab and account button open the shared community service. Sign-in uses ChatGPT, including Google through ChatGPT. The Google choice explains that a Google-linked ChatGPT account is required and that it can be created during sign-in. Players then choose a name or nickname; Bucketlist itself asks for no age, gender, religion, phone number, or public email.

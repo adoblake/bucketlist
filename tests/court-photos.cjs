@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
 const url=process.env.APP_URL||'http://127.0.0.1:3112';
 const fixtures=process.env.PHOTO_FIXTURES||require('node:path').join(__dirname,'fixtures','court-photos');
 (async()=>{
- const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||undefined,args:['--no-sandbox']});
  const errors=[],exports=[];let rejectExport=false,lateRoute=null,holdExport=false,missingDate=false;
  const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark',reducedMotion:'reduce'});
  await context.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','shared-courts-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));localStorage.setItem('bucketlist-theme','dark');Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.47028247951755,longitude:-111.98406982543241,accuracy:20}});}}});});
@@ -33,13 +33,13 @@ const fixtures=process.env.PHOTO_FIXTURES||require('node:path').join(__dirname,'
   assert.match(await p.locator('.court-photo-date').innerText(),/May 7, 2026/);assert.match(await p.locator('.court-photo-credit').innerText(),/Esri/);
   assert.equal(await p.locator('[data-photo-view=ground]').isVisible(),false);
   const b=exports.at(-1);assert.ok(Math.abs((b[0]+b[2])/2+111.98406982543241)<1e-6);assert.ok(Math.abs((b[1]+b[3])/2-33.47028247951755)<1e-6);
-  await p.screenshot({path:'/workspace/work/court-photos/pierce-in-app.png'});
+  await p.screenshot({path:(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/court-photos/pierce-in-app.png'});
   const previousWidth=b[2]-b[0];await p.locator('[data-photo-wider]').click();await imageReady();assert.ok(exports.at(-1)[2]-exports.at(-1)[0]>previousWidth);
   await openCourt('Encanto');await imageReady();assert.match(await p.locator('.court-photo-link img').getAttribute('alt'),/Encanto Park/);
   await p.locator('[data-photo-view=ground]').click();await imageReady();assert.match(await p.locator('.court-photo-link img').getAttribute('src'),/^data:image\/jpeg;base64,/);
   assert.match(await p.locator('.court-photo-date').innerText(),/Source published Dec 15, 2021/);assert.match(await p.locator('.court-photo-date').innerText(),/capture date not provided/);
   assert.equal(await p.locator('.court-photo-credit').getAttribute('href'),'https://x.com/PhoenixParks/status/1471266331173527555');
-  await p.screenshot({path:'/workspace/work/court-photos/encanto-in-app.png'});
+  await p.screenshot({path:(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/court-photos/encanto-in-app.png'});
   // Tab changes and dialogs clean up the old venue's pending photo request.
   await openCourt('Pierce');await imageReady();holdExport=true;await p.locator('[data-photo-closer]').click();
   await p.waitForFunction(()=>document.querySelector('.court-photo-frame').dataset.loading==='true');

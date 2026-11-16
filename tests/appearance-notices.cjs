@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const url=process.env.APP_URL||'http://127.0.0.1:3110';
 const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=','base64');
 (async()=>{
- const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||undefined,args:['--no-sandbox']});
  const errors=[];
  const context=await browser.newContext({viewport:{width:390,height:844},colorScheme:'dark',reducedMotion:'reduce'});
  await context.addInitScript(()=>{
@@ -22,7 +22,7 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
   assert.equal(await page.locator('#updates-badge').isVisible(),true);
   assert.equal(await page.locator('#appearance-toggle').getAttribute('aria-label'),'Switch to light mode');
   const darkPanel=await page.locator('#location-updates-panel').evaluate(e=>getComputedStyle(e).backgroundColor);
-  await page.screenshot({path:'/workspace/work/nearby-updates-dark.png'});
+  await page.screenshot({path:(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/nearby-updates-dark.png'});
   await page.locator('#appearance-toggle').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
   assert.equal(await page.evaluate(()=>localStorage.getItem('bucketlist-theme')),'light');
@@ -30,7 +30,7 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
   const lightPanel=await page.locator('#location-updates-panel').evaluate(e=>getComputedStyle(e).backgroundColor);
   assert.notEqual(darkPanel,lightPanel);
   assert.equal(await page.locator('#appearance-toggle').getAttribute('aria-label'),'Switch to dark mode');
-  await page.screenshot({path:'/workspace/work/nearby-updates-light.png'});
+  await page.screenshot({path:(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/nearby-updates-light.png'});
   await page.locator('#dismiss-location-updates').click();
   assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
   await page.waitForTimeout(1400);
