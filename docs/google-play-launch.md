@@ -4,17 +4,16 @@ Bucketlist is an installable web app (PWA). The quickest way onto Google Play is
 
 The wrapper is the easy part. Most of the work below is about hosting, accounts and Play policy. It's ordered so that each step unblocks the next one.
 
-## Current state (audited 2026-11-16)
+## Current state (2026-11-16)
 
 | Area | Status |
 | --- | --- |
-| Unit/API tests (`npm test`) | 64/64 pass |
-| `build`, `build:web`, `build:community` | Build cleanly and reproducibly |
-| Browser suites: browser, game-plan, appearance, location, calendar, phone, app-updates, court-photos, play, community, email-auth | Pass |
-| Browser suites: `courts.cjs`, `showcase.cjs`, `arizona-browser.cjs` | **Stale.** They assume all 125 Phoenix pins are on screen at once, which stopped being true when results became limited to the visible map area (commit `c533476`). `location.cjs` already covers the current behavior. These three need rewriting, not an app fix. |
-| Install manifest | Has maskable icons, orientation, language and categories, which Android needs for a correct adaptive launcher icon |
-
-Test notes: the browser tests now use Playwright's own Chromium unless `BROWSER_EXECUTABLE` is set. They write QA screenshots to `$QA_OUT`, which defaults to the system temp folder (previously a hard-coded `/workspace/work`). Some suites still overwrite the committed images in `docs/`. Run `git checkout -- docs/` after a test run unless you mean to refresh them.
+| Tests | `npm run test:all` builds everything, starts local servers, and runs 70 unit tests plus 15 browser suites. **18/18 pass.** |
+| Account deletion | **Built.** It's in-app (Groups & chat → Account → Delete my account) and on a public page (`/legal/delete-account`). |
+| Report, block, rules, moderation | **Built.** Players can report messages, players, courts, photos and games, and can block other players. Everyone accepts the community rules at sign-up. Moderators have a review screen. |
+| Privacy policy and rules pages | **Drafted** from what the code actually does, at `/legal/privacy` and `/legal/terms`. Linked from every app screen. **You need to add a support email and get them reviewed.** |
+| Install manifest | Has maskable icons, orientation, language and categories, which Android needs for a correct adaptive launcher icon. |
+| Hosting on one domain, and sign-in usable by everyone | **Not started.** Needs your decisions. See blockers 1–2. |
 
 ## Blockers: fix these before submitting
 
@@ -47,25 +46,31 @@ If the backend moves off ChatGPT Sites, the "Continue with ChatGPT" option goes 
 
 ### 3. Account deletion (Play policy, required)
 
-Any app that lets people create an account must offer:
+**Done in code.** `DELETE /api/community/account` deletes everything in one database transaction:
 
-- **In-app deletion:** Profile → Delete account. It removes the profile, memberships, messages, contributed courts and photos, push subscriptions and the email identity. Explain any data you keep and why.
-- **A public web page** where people can request deletion without reinstalling. Its URL goes into the Data safety form.
+- Removed: the profile, messages, memberships, game sign-ups, confirmations, corrections, blocks, push subscriptions and court photos.
+- Shared groups pass to their longest-standing member.
+- Upcoming games the person hosts are cancelled, and their players are alerted.
+- Court pins stay on the map, anonymised.
 
-The API has no account-deletion endpoint yet. Today only groups, messages, memberships and push subscriptions can be removed one at a time.
+The public page `/legal/delete-account` explains all of this and goes in Play Console's account-deletion URL field.
+
+**Left for you:** the Worker can't delete the email address held by the sign-in provider (Supabase) without a secret admin key. The deletion page promises to remove it within 30 days. Do that by hand, following [moderation.md](moderation.md), or add an admin-key integration later.
 
 ### 4. User-generated content safety (Play policy, required)
 
-Chat, court photos and player-added pins count as user-generated content. Play requires:
+**Done in code.**
 
-- **Terms of use** that forbid objectionable content, and that users accept before posting.
-- **In-app reporting** of messages, photos, courts and users, sent to *you* as the moderator. Today the only report path is "suggest a correction", which goes to the court's contributor, not to you.
-- **Blocking other users.** This isn't built yet.
-- **A way for you to act on reports:** remove content and ban accounts, even through a simple admin page or SQL runbook.
+- **Rules acceptance:** new players accept the community rules at sign-up. Existing players are asked before their next post. The rules version and date are stored, and bumping `TERMS_VERSION` in `worker/safety.js` re-prompts everyone.
+- **Reporting:** players can report messages, players, courts, court photos and games. Each report stores a snapshot of the content, so it stays reviewable even if the content is deleted.
+- **Blocking:** blocking hides that player's messages, unread counts and alerts for you.
+- **Moderators:** accounts listed in the Worker setting `MODERATOR_IDS` get a **Review reports** screen with Remove, Remove & suspend, Suspend and Dismiss. A suspended player can't post, but can still read, leave groups and delete their account.
+
+**Left for you:** set `MODERATOR_IDS` to your own account ID (see [moderation.md](moderation.md)). Check reports regularly. Play expects them to be acted on.
 
 ### 5. Privacy policy and Data safety form (required)
 
-You need a public privacy policy page (HTML, not a PDF) on your domain, plus the matching Data safety answers in Play Console. Based on the code, declare:
+**Drafted.** `/legal/privacy` is written from what the code does. For example, precise location never reaches the server, and photos are re-saved on the device, which removes their GPS metadata. The page is linked from the map app's menu, sign-up and footers. **Before publishing:** set `SUPPORT_EMAIL` in `public/site-config.js` (the build warns while it's empty). Have someone qualified review the privacy policy and the rules: they're a plain-language draft, not legal advice. Use these Data safety answers:
 
 - **Collected:**
   - Name/nickname
@@ -149,10 +154,11 @@ Commit the generated `android/` project, but not the keystore: add `*.keystore` 
 
 1. Choose and buy a domain. Decide on backend hosting (Cloudflare recommended).
 2. Move the map, `/play/` and `/community/` to that domain. Turn on email sign-in.
-3. Build account deletion, report/block, terms acceptance and a basic moderation path.
-4. Publish the privacy policy, terms and deletion-request pages. Switch the map tile provider.
-5. Generate the TWA, upload to internal testing, and fix assetlinks verification.
-6. Run the closed test (14 days) while finishing the store listing. Then apply for production.
+3. ~~Build account deletion, report/block, terms acceptance and moderation~~ (done). Deploy the Worker, which applies migration `0002`. Set `MODERATOR_IDS` and `SUPPORT_EMAIL`.
+4. Get the privacy policy and rules reviewed, then publish them. Switch the map tile provider.
+5. Decide whether the fictional demo content ships in the store build. Sample games currently appear as "games with open spots" at real parks. A Play reviewer may read that as misleading, and players may go looking for games that don't exist.
+6. Generate the TWA, upload to internal testing, and fix assetlinks verification.
+7. Run the closed test (14 days) while finishing the store listing. Then apply for production.
 
 ## Reference links
 

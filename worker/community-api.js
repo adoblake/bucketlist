@@ -47,7 +47,7 @@ async function communityApi(request,env,ctx={waitUntil(){}},authOptions={}){
   const user=await identity();if(!user)throw new ApiError(401,'Please sign in to continue.');
   if(path==='/api/community/profile'&&method==='POST'){
    await rate(db,user.id,'profile',12,60);const data=await bodyJson(request),name=cleanText(data.name,1,40,'Your name'),now=Date.now(),accept=data.acceptTerms===true;
-   if(!accept&&!await profile(db,user.id))throw new ApiError(400,'Please agree to the community rules to continue.');
+   const existing=await profile(db,user.id);if(!accept&&!existing)throw new ApiError(400,'Please agree to the community rules to continue.');if(existing?.suspended_at)throw new ApiError(403,'This account is suspended, so its name can’t be changed.');
    await db.prepare('INSERT INTO community_profiles (id,name,created_at,updated_at,terms_version,terms_accepted_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,updated_at=excluded.updated_at,terms_version=COALESCE(excluded.terms_version,terms_version),terms_accepted_at=COALESCE(excluded.terms_accepted_at,terms_accepted_at)').bind(user.id,name,now,now,accept?TERMS_VERSION:null,accept?now:null).run();return answer({profile:{id:user.id,name}});
   }
   if(path==='/api/community/account'&&method==='DELETE'){

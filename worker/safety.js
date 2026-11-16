@@ -127,6 +127,7 @@ export async function safetyApi(request,env,ctx,user,{answer,bodyJson,rate,membe
   return answer({ok:true});
  }
  const person=path.match(/^\/api\/community\/moderation\/users\/([^/]{1,320})$/);
+ if(person&&method==='DELETE'){const d=await bodyJson(request),id=decodeURIComponent(person[1]);if(d.confirm!=='DELETE')fail(400,'Type DELETE to confirm.');if(id===user.id||id===DELETED_ID)fail(409,'Use Account → Delete my account for your own account.');const result=await deleteAccount(db,env,ctx,id);if(!result.deleted)fail(404,'This player was not found.');return answer(result);}
  if(person&&method==='POST'){const d=await bodyJson(request);if(typeof d.suspended!=='boolean')fail(400,'Choose suspend or restore.');const id=decodeURIComponent(person[1]);if(id===user.id)fail(409,'You can’t change your own account.');const r=await S(db,'UPDATE community_profiles SET suspended_at=? WHERE id=?',d.suspended?now:null,id).run();if(!r.meta?.changes)fail(404,'This player was not found.');return answer({ok:true});}
  fail(404,'This page was not found.');
 }

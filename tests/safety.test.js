@@ -90,6 +90,7 @@ test('only moderators can review reports; removal and suspension take effect and
  assert.equal((await f.call('alice','/me')).data.user.suspended,true);
  const post=await f.call('alice','/groups/'+g.id+'/messages','POST',{body:'again',clientId:'suspended-1'});assert.equal(post.status,403);assert.equal(post.data.code,'suspended');
  assert.equal((await f.call('alice','/groups/'+g.id+'/messages')).status,200);
+ assert.equal((await f.call('alice','/profile','POST',{name:'Offensive name'})).status,403,'suspended players cannot rename');
  assert.equal((await f.call('mod','/moderation/users/'+encodeURIComponent('chatgpt:alice'),'POST',{suspended:false})).status,200);
  assert.equal((await f.call('alice','/groups/'+g.id+'/messages','POST',{body:'sorry',clientId:'restored-1'})).status,201);
 });
@@ -131,4 +132,15 @@ test('account deletion removes personal data, hands shared groups on, cancels ho
  const me=(await f.call('alice','/me')).data;assert.equal(me.user.profile,null);
  assert.equal((await f.call('alice','/account','DELETE',{confirm:'DELETE'})).data.deleted,false,'repeat deletion is harmless');
  assert.equal((await f.call('bob','/blocks','POST',{userId:'system:deleted'})).status,400);
+});
+
+test('moderators can delete an account on a verified email request; nobody else can',async()=>{
+ const f=fixture();for(const u of ['alice','bob','mod'])await f.signup(u);const g=await f.group('alice','bob');await f.say('alice',g,'Hello');
+ const path='/moderation/users/'+encodeURIComponent('chatgpt:alice');
+ assert.equal((await f.call('bob',path,'DELETE',{confirm:'DELETE'})).status,403);
+ assert.equal((await f.call('mod',path,'DELETE',{})).status,400);
+ assert.equal((await f.call('mod','/moderation/users/'+encodeURIComponent('chatgpt:mod'),'DELETE',{confirm:'DELETE'})).status,409);
+ const r=await f.call('mod',path,'DELETE',{confirm:'DELETE'});assert.equal(r.status,200);assert.equal(r.data.groupsTransferred,1);
+ assert.equal(f.count('SELECT COUNT(*) AS n FROM community_profiles WHERE id=?','chatgpt:alice'),0);assert.equal(f.count('SELECT COUNT(*) AS n FROM community_messages'),0);
+ assert.equal((await f.call('mod',path,'DELETE',{confirm:'DELETE'})).status,404);
 });

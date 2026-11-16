@@ -49,6 +49,8 @@ Independent **email + one-time code** sign-in is implemented and locally tested,
 - Create invite-only groups, share an invitation, join, and exchange persistent messages across devices. Only authenticated members can access a group's messages. Live views refresh about every three seconds.
 - Group creators can replace invitations, remove members, delete messages, and delete their group. Members can leave and delete their own messages. Server-side validation, capacity checks, send deduplication, and per-account rate limits protect writes.
 - Everyone can share the general app link before signing in. Invitation controls belong to group creators.
+- **Safety:** players accept the [community rules](legal/terms.html) at sign-up. Anyone can report a message, player, court, court photo, or game, and can block a player to hide their messages and alerts. Moderators listed in the `MODERATOR_IDS` Worker setting review reports in the app. See [moderation](docs/moderation.md).
+- **Account deletion:** go to Groups & chat → Account → Delete my account. This deletes the profile, messages, memberships, game sign-ups, and photos in one step. Shared groups pass to another member, and court pins stay without the player's name. The public pages `/legal/privacy`, `/legal/terms`, and `/legal/delete-account` are served by the Worker. Set `SUPPORT_EMAIL` in `public/site-config.js` before publishing them.
 - Message alerts are opt-in per device and use encrypted Web Push. Notification text does not include private message content. On iPhone/iPad, the community page must be added to Home Screen before enabling alerts. Delivery depends on browser/OS support and notification permission.
 - Returning court-app visitors see the release notice once; it can be reopened from **What’s new**. Existing open pages check for later releases. Merely possessing the URL does not make a visitor reachable for closed-app alerts.
 
@@ -153,9 +155,13 @@ npm start
 Open the server on port 3000 (`PORT` overrides it). The server uses Node built-ins. Leaflet 1.9.4 is pinned and its licensed distribution is bundled in public/vendor/leaflet so the standalone artifact needs no CDN scripts. Playwright is a development-only dependency.
 
 ```sh
-npm test                 # HTTP, game-plan selection, calendar, capacity, privacy, and stats tests
+npm test                 # unit/API tests: permissions, capacity, safety, deletion, calendar, stats (~1s)
+npm run test:all         # everything: unit tests, all builds, local servers, and all 15 browser suites (~2–4 min)
+npm run test:all -- safety play   # only browser suites whose names match
 npm run build            # regenerate the downloadable BucketList.html
 ```
+
+`test:all` starts its own servers on ports 4100–4140 (`TEST_PORT_BASE` changes this) and stops them afterwards. Set `BROWSER_EXECUTABLE` to use a system Chromium. Screenshots go to `$QA_OUT` (default: your temp folder). Committed `docs/` images are only refreshed when `UPDATE_DOCS=1` is set.
 
 Browser regression checks require a running server and Chromium:
 
