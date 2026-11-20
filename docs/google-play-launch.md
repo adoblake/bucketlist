@@ -90,7 +90,7 @@ The public page `/legal/delete-account` explains all of this and goes in Play Co
 
 ### 6. Map and geodata providers suitable for a store app
 
-The public OpenStreetMap tile server, Nominatim and Overpass have fair-use policies that don't allow heavy app traffic. Before launch, switch the tile URL to a provider with a free or paid tier and app terms, such as MapTiler, Stadia Maps or Thunderforest. Do the same for search, or rate-limit and cache it. The Phoenix court list is already bundled, so that part is unaffected.
+The public OpenStreetMap tile server, Nominatim and Overpass have fair-use policies that don't allow heavy app traffic. Before launch, switch the tile URL to a provider with a free or paid tier and app terms, such as MapTiler, Stadia Maps or Thunderforest. Do the same for search, or rate-limit and cache it. The Phoenix court list and the nationwide US court directory are bundled with the app, so US court listings don't depend on Overpass; it is only the fallback outside the US.
 
 ### 7. Store-facing wording
 

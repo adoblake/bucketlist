@@ -1,4 +1,4 @@
-# Builds the nationwide court directory (public/data/us) from OpenStreetMap and commits it,
+# Builds the nationwide court directory (public/data/us) from OpenStreetMap (Geofabrik's daily state extracts) and commits it,
 # so players anywhere in the US see the courts and park details near them.
 # Runs monthly, by hand from the Actions tab, and whenever the build script changes on a claude/ branch.
 name: Refresh court directory
@@ -35,7 +35,10 @@ jobs:
         with:
           node-version: 22
 
-      # Raw Overpass answers are cached between runs, so a run that times out resumes where it stopped.
+      - name: Install osmium
+        run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
+
+      # Filtered state data is cached between runs, so a run that times out resumes where it stopped.
       - uses: actions/cache/restore@v4
         with:
           path: .cache/us-courts
@@ -43,7 +46,7 @@ jobs:
           restore-keys: us-courts-
 
       # A new month starts from fresh OpenStreetMap data; reruns within a month reuse what was fetched.
-      - name: Drop last month's cached answers
+      - name: Drop last month's cached data
         run: |
           stamp=$(date -u +%Y-%m)
           if [ -d .cache/us-courts ] && [ "$(cat .cache/us-courts/month 2>/dev/null)" != "$stamp" ]; then rm -rf .cache/us-courts; fi

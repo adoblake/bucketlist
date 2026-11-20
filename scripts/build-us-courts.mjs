@@ -1,85 +1,106 @@
 // Builds the nationwide court directory from OpenStreetMap so every player sees the courts near them,
 // even when live lookups are slow or down.
 //
-//   npm run refresh:us-courts                 fetch (or reuse cached) data for every state, then write tiles
+//   npm run refresh:us-courts                 download (or reuse cached) data for every state, then write tiles
 //   npm run refresh:us-courts -- GA FL NY CA  only these states (tiles for other states are kept)
 //
+// Source: Geofabrik's daily per-state OpenStreetMap extracts (download.geofabrik.de), filtered with osmium-tool
+// (`apt install osmium-tool` / `brew install osmium-tool`). The public Overpass servers can't serve a nationwide
+// pull reliably, so the bulk extracts are used instead.
+//
 // Output: public/data/us/index.json plus one small file per half-degree tile (public/data/us/<lat>_<lng>.json).
-// Raw Overpass responses are cached in .cache/us-courts/ so an interrupted run resumes where it stopped.
+// Filtered state data is cached in .cache/us-courts/ so an interrupted run resumes where it stopped.
 // Data © OpenStreetMap contributors, ODbL 1.0. Attribution is shown in the app wherever these courts appear.
 import {mkdir,readFile,writeFile,readdir,rm} from 'node:fs/promises';
-import {existsSync} from 'node:fs';
+import {existsSync,createReadStream} from 'node:fs';
+import {createInterface} from 'node:readline';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {fileURLToPath} from 'node:url';
 import {buildLocations,tileKey,TILE_SIZE} from '../public/us-courts.js';
 
+const run=promisify(execFile);
 const root=new URL('../',import.meta.url),cacheDir=new URL('.cache/us-courts/',root),outDir=new URL('public/data/us/',root);
-const ENDPOINTS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+const path=u=>fileURLToPath(u);
+const MIRROR=process.env.GEOFABRIK_URL||'https://download.geofabrik.de/north-america/us/';
 // Most populous first, so a run that is cut short still covers the most players.
-const STATES=['CA','TX','FL','NY','PA','IL','OH','GA','NC','MI','NJ','VA','WA','AZ','TN','MA','IN','MD','MO','WI','CO','MN','SC','AL','LA','KY','OR','OK','CT','UT','IA','NV','AR','KS','MS','NM','NE','ID','WV','HI','NH','ME','MT','RI','DE','SD','ND','AK','DC','VT','WY','PR'];
-const CHUNK=3;// degrees; small enough for dense metros, few enough to finish in reasonable time
-// Alaska and Hawaii span huge, mostly empty boxes, so they use bigger pieces.
-const CHUNK_FOR={AK:8,HI:5};
+const SLUGS={CA:'california',TX:'texas',FL:'florida',NY:'new-york',PA:'pennsylvania',IL:'illinois',OH:'ohio',GA:'georgia',NC:'north-carolina',MI:'michigan',NJ:'new-jersey',VA:'virginia',WA:'washington',AZ:'arizona',TN:'tennessee',MA:'massachusetts',IN:'indiana',MD:'maryland',MO:'missouri',WI:'wisconsin',CO:'colorado',MN:'minnesota',SC:'south-carolina',AL:'alabama',LA:'louisiana',KY:'kentucky',OR:'oregon',OK:'oklahoma',CT:'connecticut',UT:'utah',IA:'iowa',NV:'nevada',AR:'arkansas',KS:'kansas',MS:'mississippi',NM:'new-mexico',NE:'nebraska',ID:'idaho',WV:'west-virginia',HI:'hawaii',NH:'new-hampshire',ME:'maine',MT:'montana',RI:'rhode-island',DE:'delaware',SD:'south-dakota',ND:'north-dakota',AK:'alaska',DC:'district-of-columbia',VT:'vermont',WY:'wyoming',PR:'puerto-rico'};
+const STATES=Object.keys(SLUGS);
 // Optional time budget (minutes): stop starting new states when it runs out, still write tiles for what's done.
 const budgetMs=Number(process.env.BUDGET_MINUTES||0)*60000;
 const only=process.argv.slice(2).map(s=>s.toUpperCase()).filter(s=>STATES.includes(s));
 if(process.argv.length>2&&!only.length)throw Error('Unknown state code. Use two-letter codes such as GA FL NY CA.');
 
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-let turn=0;
-async function overpass(query,label){
- for(let attempt=1;attempt<=6;attempt++){
-  const endpoint=ENDPOINTS[(turn++)%ENDPOINTS.length];
-  try{
-   const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','User-Agent':'bucketlist-court-directory/1.0'},body:'data='+encodeURIComponent(query),signal:AbortSignal.timeout(400000)});
-   if(response.status===429||response.status===504||response.status===503){console.warn(`  ${label}: busy (${response.status}), retrying`);await sleep(20000*attempt);continue;}
-   if(!response.ok)throw Error('HTTP '+response.status);
-   const data=await response.json();if(data.remark&&/runtime error|timed out|out of memory/i.test(data.remark))throw Error(data.remark);
-   if(!Array.isArray(data.elements))throw Error('Unexpected response');return data;
-  }catch(error){console.warn(`  ${label}: ${error.message} (attempt ${attempt})`);await sleep(10000*attempt);}
- }
- throw Error('Gave up on '+label);
-}
-async function cached(name,make){const file=new URL(name,cacheDir);if(existsSync(file))return JSON.parse(await readFile(file,'utf8'));const data=await make();await writeFile(file,JSON.stringify(data));return data;}
+// Everything the directory needs: courts (any sport tag; basketball is picked out later), the parks, schools and
+// centres that contain them, and named places for the city line.
+const FILTERS=['nwr/sport','nwr/leisure=park,recreation_ground,sports_centre','nwr/amenity=school,college,university,community_centre','n/place=city,town,village,suburb,hamlet'];
 
-const COURTS='nwr["sport"~"(^|;)basketball(;|$)"]';
-const PLACES='nwr["name"]["leisure"~"^(park|recreation_ground|sports_centre)$"];nwr["name"]["amenity"~"^(school|college|university|community_centre)$"]';
-function chunks(b,size=CHUNK){
- // A box wider than 180° wraps the antimeridian (Alaska's Aleutians); keep the western-hemisphere part, where the people are.
- if(b.maxlon-b.minlon>180)b={...b,minlon:-180,maxlon:-129.9};
- const out=[];for(let s=Math.floor(b.minlat);s<b.maxlat;s+=size)for(let w=Math.floor(b.minlon);w<b.maxlon;w+=size)out.push([s,w,Math.min(s+size,Math.ceil(b.maxlat)),Math.min(w+size,Math.ceil(b.maxlon))]);return out;}
+async function extract(state){
+ const features=new URL(`${state}.geojsonseq`,cacheDir);
+ if(existsSync(features))return features;
+ const pbf=new URL(`${state}.osm.pbf`,cacheDir),filtered=new URL(`${state}.filtered.osm.pbf`,cacheDir),partial=new URL(`${state}.partial`,cacheDir);
+ try{
+  await run('curl',['-fsSL','--retry','5','--retry-delay','30','--retry-all-errors','-A','bucketlist-court-directory/1.0','-o',path(pbf),MIRROR+SLUGS[state]+'-latest.osm.pbf'],{maxBuffer:1<<20});
+  await run('osmium',['tags-filter','--overwrite','-o',path(filtered),path(pbf),...FILTERS]);
+  await rm(pbf,{force:true});
+  await run('osmium',['export','--overwrite','-f','geojsonseq','--format-option','print_record_separator=false','-a','type,id','-o',path(partial),path(filtered)]);
+  await run('mv',[path(partial),path(features)]);
+  return features;
+ }finally{for(const f of [pbf,filtered,partial])await rm(f,{force:true});}
+}
+
+// osmium's GeoJSON features → the element shape buildLocations() expects (as Overpass would give: center + bounds).
+function element(feature){
+ const {'@type':type,'@id':id,...tags}=feature.properties||{},g=feature.geometry;if(!type||!g)return null;
+ if(g.type==='Point')return {type,id,lat:g.coordinates[1],lon:g.coordinates[0],tags};
+ let minlat=90,maxlat=-90,minlon=180,maxlon=-180;
+ const walk=c=>{if(typeof c[0]==='number'){if(c[1]<minlat)minlat=c[1];if(c[1]>maxlat)maxlat=c[1];if(c[0]<minlon)minlon=c[0];if(c[0]>maxlon)maxlon=c[0];}else c.forEach(walk);};
+ walk(g.coordinates);if(minlat>maxlat)return null;
+ return {type,id,tags,center:{lat:(minlat+maxlat)/2,lon:(minlon+maxlon)/2},bounds:{minlat,minlon,maxlat,maxlon}};
+}
+async function records(features){
+ // osmium writes a closed way both as a line and as an area; keep one copy per OSM object.
+ const byRef=new Map();
+ for await(const line of createInterface({input:createReadStream(features),crlfDelay:Infinity})){
+  const text=line.replace(/^\x1e/,'').trim();if(!text)continue;
+  const el=element(JSON.parse(text));if(el)byRef.set(el.type+el.id,el);
+ }
+ const out={courts:[],containers:[],towns:[]};
+ for(const el of byRef.values()){const t=el.tags;
+  if(t.place&&el.type==='node')out.towns.push(el);
+  else if(/(^|;)\s*basketball\s*(;|$)/.test(t.sport||''))out.courts.push(el);
+  else if(t.leisure||t.amenity)out.containers.push(el);
+ }
+ return out;
+}
 
 await mkdir(cacheDir,{recursive:true});await mkdir(outDir,{recursive:true});
-const bounds=await cached('states.json',()=>overpass('[out:json][timeout:300];rel["boundary"="administrative"]["admin_level"="4"]["ISO3166-2"~"^US-"];out tags bb;','state boundaries'));
-const stateBounds=new Map(bounds.elements.filter(e=>e.bounds&&e.tags?.['ISO3166-2']).map(e=>[e.tags['ISO3166-2'].slice(3),e.bounds]));
 const todo=only.length?only:STATES;
 const started=Date.now();let done=0;
 const failed=[];
 for(const state of todo){
  if(budgetMs&&Date.now()-started>budgetMs){console.warn(`Time budget used up; ${state} and later states wait for the next run.`);failed.push(...todo.slice(todo.indexOf(state)));break;}
- const b=stateBounds.get(state);if(!b){console.warn('No boundary for '+state+', skipping.');failed.push(state);continue;}
- const records={courts:[],containers:[],towns:[]};
- try{
-  for(const [s,w,n,e] of chunks(b,CHUNK_FOR[state])){
-   const box=`(${s},${w},${n},${e})`,label=`${state} ${box}`;
-   const data=await cached(`${state}_${s}_${w}.json`,()=>overpass(`[out:json][timeout:360][maxsize:1073741824];area["ISO3166-2"="US-${state}"]["admin_level"="4"]->.s;${COURTS}(area.s)${box};out tags center;(${PLACES.split(';').map(q=>q+'(area.s)'+box+';').join('')});out tags bb;node["place"~"^(city|town|village|suburb|hamlet)$"]["name"](area.s)${box};out body;`,label));
-   for(const el of data.elements){const t=el.tags||{};if(t.place&&el.type==='node')records.towns.push(el);else if(/(^|;)basketball(;|$)/.test(t.sport||''))records.courts.push(el);else records.containers.push(el);}
-  }
- }catch(error){
-  // Keep going so one stubborn state doesn't block the rest; finished pieces stay cached for the next run.
-  console.warn(`${state}: ${error.message}; its previous tiles (if any) are kept.`);failed.push(state);continue;
+ let data;
+ try{data=await records(await extract(state));}
+ catch(error){
+  // Keep going so one stubborn state doesn't block the rest.
+  console.warn(`${state}: ${String(error.stderr||error.message).trim().split('\n').pop()}; its previous tiles (if any) are kept.`);failed.push(state);continue;
  }
- const locations=buildLocations(records,state);
+ const locations=buildLocations(data,state);
  await writeFile(new URL(`state-${state}.json`,cacheDir),JSON.stringify(locations));
- done++;console.log(`${state}: ${records.courts.length} court features → ${locations.length} locations (${done}/${todo.length}, ${Math.round((Date.now()-started)/1000)}s)`);
+ done++;console.log(`${state}: ${data.courts.length} court features → ${locations.length} locations (${done}/${todo.length}, ${Math.round((Date.now()-started)/1000)}s)`);
 }
 
 // Tiles are written from every built state, so refreshing a few states keeps the rest.
 const all=[],built=new Set();for(const name of (await readdir(cacheDir)).filter(n=>/^state-[A-Z]{2}\.json$/.test(n))){built.add(name.slice(6,8));all.push(...JSON.parse(await readFile(new URL(name,cacheDir),'utf8')));}
 // A state that failed and has no cached build keeps the courts already published for it.
 for(const name of (await readdir(outDir)).filter(n=>/^-?\d+\.\d_-?\d+\.\d\.json$/.test(n)))for(const loc of JSON.parse(await readFile(new URL(name,outDir),'utf8')))if(!built.has(loc.s))all.push(loc);
-const tiles=new Map();for(const loc of all){const key=tileKey(loc.la,loc.lo);if(!tiles.has(key))tiles.set(key,[]);tiles.get(key).push(loc);}
+// State extracts overlap slightly at borders; keep one copy of each park or court group.
+const seen=new Set(),unique=all.filter(loc=>{const k=loc.h?'h'+loc.h:'o'+loc.o;if(seen.has(k))return false;seen.add(k);return true;});
+const tiles=new Map();for(const loc of unique){const key=tileKey(loc.la,loc.lo);if(!tiles.has(key))tiles.set(key,[]);tiles.get(key).push(loc);}
 for(const name of await readdir(outDir))if(name.endsWith('.json'))await rm(new URL(name,outDir));
-const checkedAt=new Date().toISOString().slice(0,10),index={source:'OpenStreetMap',license:'ODbL 1.0',attribution:'© OpenStreetMap contributors',checkedAt,tileSize:TILE_SIZE,locations:all.length,tiles:{}};
+const checkedAt=new Date().toISOString().slice(0,10),index={source:'OpenStreetMap',license:'ODbL 1.0',attribution:'© OpenStreetMap contributors',checkedAt,tileSize:TILE_SIZE,locations:unique.length,tiles:{}};
 for(const [key,list] of [...tiles].sort()){list.sort((a,b)=>a.i.localeCompare(b.i));await writeFile(new URL(key+'.json',outDir),JSON.stringify(list));index.tiles[key]=list.length;}
 await writeFile(new URL('index.json',outDir),JSON.stringify(index));
-console.log(`Wrote ${all.length} court locations in ${tiles.size} tiles to public/data/us/.`);
+console.log(`Wrote ${unique.length} court locations in ${tiles.size} tiles to public/data/us/.`);
 if(failed.length){console.warn('Not refreshed this run: '+failed.join(' ')+'. Run again to resume.');process.exitCode=2;}
