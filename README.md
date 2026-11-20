@@ -1,8 +1,8 @@
 # Bucketlist
 
-Bucketlist opens directly on the **Arizona court map**, with a visible court-search control and a **Map / List** switch. New and returning visitors can browse without an account. When location is permitted, the map centers on the player; otherwise the Phoenix map and manual Arizona search remain available. Four persistent tabs connect **Courts / Games / Chat / Stats**.
+Bucketlist opens directly on the **court map wherever you are**, with a visible court-search control and a **Map / List** switch. New and returning visitors can browse without an account. When location is permitted, the map centers on the player; otherwise the Phoenix map and place search remain available. Four persistent tabs connect **Courts / Games / Chat / Stats**.
 
-Players can now use **+ Add court** to pin a specific basketball court inside an Arizona park, optionally add its photo, and host shared games there. See [court contribution and shared-game instructions](docs/shared-courts.md).
+Players can now use **+ Add court** to pin a specific basketball court inside a park anywhere, optionally add its photo, and host shared games there. See [court contribution and shared-game instructions](docs/shared-courts.md).
 
 The selected **Game Plan (option 2)** layout remains as an expandable sample in **Games**, with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Warm off-white, bold Inter typography, orange accents, and a matching dark theme retain the original Bucketlist branding.
 
@@ -18,7 +18,7 @@ Branding: the original orange basketball pin and single-color **Bucketlist** wor
 
 Appearance and location updates: the header and menu both offer Light/Dark mode, and your choice is saved on this device. New visitors start in the selected light design; existing saved Light, Dark, or device settings are respected. The themed Nearby updates dropdown automatically opens for unseen information in the current area, including location issues, new court listings, and directory failures. Dismiss with Got it, the close button, Escape, or a click outside; reopen it from the header bell. Routine updates do not repeatedly reopen acknowledged notices during the same session.
 
-Arizona edition: court search, new game venues, and live lookups stay within Arizona. Device location is used only when inside the state; blocked embedded views offer a direct browser link. Share and installation links use the current app. Location failures and directory failures have separate messages and recovery actions. The saved directory contains 125 Phoenix locations; broader Arizona coverage still requires the live directory or previously saved results. No complete statewide snapshot was available during this update.
+Works wherever you are: the map centres on your location in any state or country and names your area (for example "Chicago, IL"). Court search, live nearby-court lookups, **+ Add court**, and shared games all follow you. Game times are always shown in the court's own local time zone, worked out from its location. Phoenix keeps its bundled city directory of 125 locations; elsewhere, courts come from live OpenStreetMap lookups and player-added pins. Sample and demo games stay in Phoenix and are labelled as samples.
 
 The public app is published on GitHub Pages from the `gh-pages` branch of `adoblake/bucketlist`. Its build includes the install manifest, service worker, app icons, and [QR code for showing/printing](docs/share-qr.png). The canonical public address and repository are defined once in `public/site-config.js`; the standalone fallback, QR codes, preview path, and publisher use that configuration.
 
@@ -84,7 +84,7 @@ These QA captures block external street tiles and show the neutral map fallback.
 
 ## Game-plan home and navigation
 
-The next run is the earliest future Arizona game you have joined. Otherwise it is an available game within 30 miles of your current or manually selected area. A verified court photograph breaks ties at the same start time. Empty areas offer “Find a court” without substituting a distant venue. The date uses America/Phoenix; scheduling continues to show its explicit timezone. The original photo credit links to the publisher, and its publication date is not presented as a capture date.
+The next run is the earliest future game you have joined. Otherwise it is an available game within 30 miles of your current or manually selected area. A verified court photograph breaks ties at the same start time. Empty areas offer “Find a court” without substituting a distant venue. The date uses America/Phoenix; scheduling continues to show its explicit timezone. The original photo credit links to the publisher, and its publication date is not presented as a capture date.
 
 Guests see blank personal progress until signing in. Sessions and PPG are calculated from the current local profile; the optional fictional 90-day demo is labeled and stored separately. “View all games” expands the upcoming/history list and scheduling action. The profile button, header bell, theme control, and App menu remain accessible across tabs.
 
@@ -116,7 +116,7 @@ Court details show the city source, retrieval date, mapped court count, address,
 
 Sources: [City public GIS](https://services.arcgis.com/cfKakmeHE95cgeEK/arcgis/rest/services/ParksOpenData/FeatureServer), basketball layer **0**, park layer **10**; ArcGIS item owned by **City_of_Phoenix**. `public/data/phoenix-courts.js` records retrieval metadata and the public source URL. Update it using `npm run refresh:courts`, then rebuild/publish. The refresh was exercised against the real service and returned 125 locations/155 court records. Node 24's environment-proxy support is used automatically when available; it does not disable TLS verification.
 
-Coverage is currently strongest for **Phoenix city limits**. Scottsdale retains a starter venue. Legacy out-of-state records remain in stored data for compatibility but are excluded from this Arizona edition. Arizona areas can supplement saved entries by automatically requesting tagged basketball courts inside the visible map bounds using OpenStreetMap/Overpass, after a short debounce. Lookups require zoom level 11 or closer and a bounded area. Older requests are aborted when the camera changes; provider failures retain saved results with an explicit status. That external lookup has returned errors/timeouts and is not guaranteed complete. This release does not claim complete coverage of all metro cities or the world. Existing cached court references, saved games, and chat groups are preserved when a duplicate location gets a city-backed entry.
+Coverage is currently strongest for **Phoenix city limits**. Scottsdale retains a starter venue. A legacy Austin demo venue stays in stored data for compatibility but is never shown as a real court. Any area can supplement saved entries by automatically requesting tagged basketball courts inside the visible map bounds using OpenStreetMap/Overpass, after a short debounce. Lookups require zoom level 11 or closer and a bounded area. Older requests are aborted when the camera changes; provider failures retain saved results with an explicit status. That external lookup has returned errors/timeouts and is not guaranteed complete. This release does not claim complete coverage of all metro cities or the world. Existing cached court references, saved games, and chat groups are preserved when a duplicate location gets a city-backed entry.
 
 | All Phoenix locations | Search directory | City-backed court details |
 | --- | --- | --- |
@@ -124,7 +124,7 @@ Coverage is currently strongest for **Phoenix city limits**. Scottsdale retains 
 
 ## What you can try
 
-- **Courts:** search Phoenix, Scottsdale, or another Arizona destination; select a sample court, tap its marker/popup, and pan/zoom the map with geographically anchored pins; open court details, directions, scheduled games, or its lasting community chat. Geolocation centers the map on the user; the visible map bounds filter both court pins and search results. The location-arrow button recenters at any time. Destination search moves the map, while court-name search narrows results inside that area.
+- **Courts:** search any city, address, or court name (results near the map you're looking at come first); select a sample court, tap its marker/popup, and pan/zoom the map with geographically anchored pins; open court details, directions, scheduled games, or its lasting community chat. Geolocation centers the map on the user; the visible map bounds filter both court pins and search results. The location-arrow button recenters at any time. Destination search moves the map, while court-name search narrows results inside that area.
 - **Scheduled games:** join the roster, select/switch between capacity-limited Team A/B, and name your team within that game. Create a future game with a court, player limit, play style, and meeting/access notes.
 - **Chat:** separate court-community and game-group conversations, plus a central chat list.
 - **My stats:** log and delete personal session records for points, rebounds, and assists; see self-reported averages and history.

@@ -81,7 +81,7 @@ The public page `/legal/delete-account` explains all of this and goes in Play Co
   - Push tokens
   - User IDs
 - **Shared with or sent to third parties:**
-  - OpenStreetMap tiles and Nominatim (searched place names)
+  - OpenStreetMap tiles and Nominatim (searched place names, and the player's area rounded to about 1 km so it can be named)
   - Overpass (map area)
   - Esri World Imagery (court coordinates)
   - Supabase (email)

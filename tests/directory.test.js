@@ -12,3 +12,27 @@ test('map-area lookup uses viewport bounds, validates area, and excludes private
  assert.equal(normalizeAreaCourts(raw).length,2);let request='';const courts=await discoverCourtsInBounds(bounds,undefined,async url=>{request=decodeURIComponent(url);return {ok:true,json:async()=>({elements:raw})};});assert.equal(courts.length,1);assert.match(request,/40.7,-74.02,40.76,-73.96/);await assert.rejects(discoverCourtsInBounds(bounds,undefined,async()=>({ok:true,json:async()=>({remark:'timeout',elements:raw})})),/Incomplete/);
  assert.deepEqual(await locateDestination('Somewhere',undefined,async()=>({ok:true,json:async()=>[{lat:'40.73',lon:'-73.99'}]})),{lat:40.73,lng:-73.99});await assert.rejects(locateDestination('missing',undefined,async()=>({ok:true,json:async()=>[]})),/not found/);
 });
+
+test('areas are named wherever the player is, with US state codes and country names elsewhere',async()=>{
+ const {areaName}=await import('../public/directory.js');
+ assert.equal(areaName({city:'Chicago',state:'Illinois','ISO3166-2-lvl4':'US-IL',country_code:'us'}),'Chicago, IL');
+ assert.equal(areaName({town:'Flagstaff',state:'Arizona','ISO3166-2-lvl4':'US-AZ',country_code:'us'}),'Flagstaff, AZ');
+ assert.equal(areaName({city:'London',country:'United Kingdom',country_code:'gb'}),'London, United Kingdom');
+ assert.equal(areaName({county:'Coconino County',state:'Arizona',country_code:'us'}),'Coconino County, Arizona');
+ assert.equal(areaName(null),'');assert.equal(areaName({}),'');
+});
+test('area naming rounds coordinates to about 1 km before they leave the device',async()=>{
+ const {describeArea}=await import('../public/directory.js');let requested;
+ const name=await describeArea(41.878113,-87.629799,undefined,async url=>{requested=new URL(url);return {ok:true,json:async()=>({address:{city:'Chicago','ISO3166-2-lvl4':'US-IL',country_code:'us'}})};});
+ assert.equal(name,'Chicago, IL');assert.equal(requested.searchParams.get('lat'),'41.88');assert.equal(requested.searchParams.get('lon'),'-87.63');
+});
+test('place search works anywhere and prefers results near the visible map',async()=>{
+ const {searchPlace}=await import('../public/directory.js');let requested;
+ const place=await searchPlace('Lincoln Park',{west:-87.9,north:42.1,east:-87.5,south:41.7},undefined,async url=>{requested=new URL(url);return {ok:true,json:async()=>[{lat:'41.92',lon:'-87.63',display_name:'Lincoln Park, Chicago, Cook County, Illinois, United States'}]};});
+ assert.deepEqual(place,{lat:41.92,lng:-87.63,label:'Lincoln Park, Chicago'});assert.equal(requested.searchParams.get('viewbox'),'-87.9000,42.1000,-87.5000,41.7000');assert.equal(requested.searchParams.get('bounded'),null,'a preference, not a limit');
+ await assert.rejects(searchPlace('Nowhere',null,undefined,async()=>({ok:true,json:async()=>[]})),/couldn’t find/);
+});
+test('live court lookup is a plain map-area query with no state restriction',async()=>{
+ const {areaCourtQuery}=await import('../public/directory.js');
+ assert.doesNotMatch(areaCourtQuery({south:41.8,west:-87.7,north:41.9,east:-87.6}),/US-AZ|area\[/);
+});

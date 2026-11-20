@@ -49,3 +49,19 @@ export function mountTimePicker(root,{value=null,onConfirm,onCancel,clock=()=>ne
  }
  draw();return ()=>{root.innerHTML='';root.onkeydown=null;};
 }
+// "18:00 on 2026-11-21 in America/Chicago" → the exact instant, wherever the person entering it is.
+// Two passes settle the offset across daylight-saving changes; times inside a spring-forward gap move forward.
+export function wallClockToUtc(local,timeZone){
+ const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(local||''));if(!m)return null;
+ const fields={timeZone,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'};
+ let format;try{format=new Intl.DateTimeFormat('en-US',fields);}catch{return null;}
+ const offset=at=>{const p=Object.fromEntries(format.formatToParts(new Date(at)).map(x=>[x.type,x.value]));return Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute)-at;};
+ const wanted=Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5]),first=wanted-offset(wanted),second=wanted-offset(first);
+ const exact=[first,second].filter(at=>at+offset(at)===wanted);
+ return new Date(exact.length?Math.min(...exact):Math.max(first,second));
+}
+// The current wall-clock time in a zone, as a datetime-local value.
+export function wallClockNow(timeZone,at=new Date()){
+ const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(at).map(x=>[x.type,x.value]));
+ return p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute;
+}

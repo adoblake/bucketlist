@@ -13,3 +13,5 @@ export function getDeviceLocation(geolocation) {
   },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
  });
 }
+// Any real point on the map. Bucketlist works wherever the player is.
+export function isValidPoint(lat,lng){return typeof lat==='number'&&typeof lng==='number'&&Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=85&&Math.abs(lng)<=180;}

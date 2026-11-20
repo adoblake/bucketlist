@@ -18,8 +18,8 @@ test('photo preference only breaks a time tie and never displaces an earlier gam
 test('an Arizona area with no available games gets an empty state rather than distant sample games',()=>{
  assert.equal(selectPlanGame({games:[game('phoenix','pierce'),game('texas','austin')],courts,area:{lat:32.2226,lng:-110.9747},now}),null);
 });
-test('Arizona calendar dates are correct when UTC is already on the following day',()=>{
- assert.equal(gamePlanToday(now),'Sun, Nov 1');const t=gamePlanTiming('2026-11-03T01:00:00Z',now);assert.equal(t.relative,'Tomorrow');assert.equal(t.date,'Mon, Nov 2');assert.equal(t.time,'6:00 PM');
+test('calendar dates follow the player’s own time zone when UTC is already on the following day',()=>{
+ assert.equal(gamePlanToday(now,'America/Phoenix'),'Sun, Nov 1');assert.equal(gamePlanToday(now,'Asia/Tokyo'),'Mon, Nov 2');assert.equal(gamePlanToday(now,'America/Los_Angeles'),'Sun, Nov 1');const t=gamePlanTiming('2026-11-03T01:00:00Z',now);assert.equal(t.relative,'Tomorrow');assert.equal(t.date,'Mon, Nov 2');assert.equal(t.time,'6:00 PM');
 });
 test('stored timezone errors and missing dates do not break the dashboard',()=>{
  assert.equal(gamePlanTiming('2026-11-03T01:00:00Z',now,'invalid/time-zone').time,'6:00 PM');assert.equal(gamePlanTiming('bad date',now).relative,'Date unavailable');

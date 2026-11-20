@@ -6,7 +6,7 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
  const errors=[];
  async function newPage(geoScript){
   const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
-  await context.addInitScript(()=>localStorage.setItem('bucketlist-welcome-seen','yes'));
+  await context.addInitScript(()=>{localStorage.setItem('bucketlist-welcome-seen','yes');localStorage.setItem('bucketlist-release-seen','courts-everywhere-v1');});
   if(geoScript)await context.addInitScript(geoScript);
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://tile.openstreetmap.org/**',r=>r.abort());
@@ -25,23 +25,24 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
   assert.equal(await p.locator('.user-location').count(),1);assert.match(await p.locator('#court-list').innerText(),/0.0 mi/);await p.locator('#close-search').click();
   await p.locator('#menu-toggle').click();await p.locator('#share-app').click();assert.equal(await p.locator('.share-link a').getAttribute('href'),new URL('./',url).href);
   await p.locator('#close-dialog').click();
-  // Denied browser permission leaves saved AZ courts usable and offers help.
+  // Denied browser permission leaves saved courts usable and offers help.
   const {page:d}=await newPage(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(_ok,fail){fail({code:1});}}}));
   await d.goto(url,{waitUntil:'domcontentloaded'});await d.locator('#location-help').waitFor();
   assert.match(await d.locator('#map-location-status').innerText(),/Location access is off/);const savedCount=Number(await d.locator('#court-map').getAttribute('data-result-count'));assert.ok(savedCount>10,'saved Phoenix courts stay usable');assert.match(await d.locator('#directory-status').innerText(),/125 Phoenix/);
-  await d.locator('#search-toggle').click();await d.route('**/search?**',r=>r.fulfill({json:[{lat:'30.2672',lon:'-97.7431'}]}));
-  await d.locator('#location').fill('Austin');await d.locator('#search-form button').click();await d.waitForFunction(()=>document.querySelector('#map-location-status').textContent.includes('Choose a city'));
-  assert.doesNotMatch(await d.locator('#court-list').innerText(),/Alamo/);assert.equal(Number(await d.locator('#court-map').getAttribute('data-result-count')),savedCount,'an out-of-state search leaves the map where it was');
+  await d.locator('#search-toggle').click();await d.route('**/search?**',r=>r.fulfill({json:[{lat:'30.2672',lon:'-97.7431',display_name:'Austin, Travis County, Texas, United States'}]}));const asked=[];await d.route('**/api/interpreter?**',r=>{asked.push(decodeURIComponent(r.request().url()));r.fulfill({json:{elements:[{type:'node',id:4242,lat:30.2675,lon:-97.7435,tags:{sport:'basketball',name:'Austin fixture court'}}]}});});
+  await d.locator('#location').fill('Austin');await d.locator('#search-form button').click();await d.waitForFunction(()=>document.querySelector('#map-location-status').textContent.includes('Showing Austin'));
+  assert.equal(await d.locator('#header-location-name').textContent(),'Austin, Travis County');await d.locator('#court-list').getByText('Austin fixture court').waitFor({timeout:15000});assert.match(asked.at(-1),/\(30\.\d+,-97\.\d+,30\.\d+,-97\.\d+\)/,'live lookup uses the Austin map area');assert.doesNotMatch(asked.at(-1),/US-AZ/);assert.doesNotMatch(await d.locator('#court-list').innerText(),/Pierce Park|Encanto/);
   await d.locator('#close-search').click();await d.locator('#location-help').click();assert.equal(await d.locator('#details a[target=_blank]').getAttribute('href'),url.endsWith('/')?url:url+'/');
   // An iframe policy block has a direct escape link, rather than claiming GPS is off.
   const {page:e}=await newPage(()=>Object.defineProperty(document,'permissionsPolicy',{value:{allowsFeature(){return false;}}}));
   await e.goto(url,{waitUntil:'domcontentloaded'});await e.locator('#location-open-browser').waitFor();
   assert.match(await e.locator('#map-location-status').innerText(),/blocked in this view/);assert.equal(await e.locator('.user-location').count(),0);
   assert.equal(new URL(await e.locator('#location-open-browser').getAttribute('href')).origin,new URL(url).origin);
-  // A device reporting another state must never appear as a dot in Phoenix.
+  // A device anywhere gets the same map, area name, and nearby courts as one in Phoenix.
   const {page:o}=await newPage(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:35.1678,longitude:-114.573,accuracy:20}});}}}));
-  await o.goto(url,{waitUntil:'domcontentloaded'});await o.waitForFunction(()=>document.querySelector('#map-location-status').textContent.includes('outside Arizona'));
-  assert.equal(await o.locator('.user-location').count(),0);assert.equal(await o.locator('#refit-map').isEnabled(),true);assert.ok(Number(await o.locator('#court-map').getAttribute('data-result-count'))>10,'falls back to the Phoenix courts');
+  const reverse=[];await o.route('**/reverse?**',r=>{reverse.push(new URL(r.request().url()));r.fulfill({json:{address:{town:'Laughlin',state:'Nevada','ISO3166-2-lvl4':'US-NV',country_code:'us'}}});});await o.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[{type:'way',id:777,center:{lat:35.1682,lon:-114.5722},tags:{sport:'basketball',leisure:'pitch',name:'Laughlin fixture court'}}]}}));
+  await o.goto(url,{waitUntil:'domcontentloaded'});await o.waitForFunction(()=>document.querySelector('#map-location-status').textContent.includes('Centered on your location'));
+  assert.equal(await o.locator('.user-location').count(),1);assert.equal(await o.locator('#refit-map').isEnabled(),true);await o.waitForFunction(()=>document.querySelector('#header-location-name').textContent==='Laughlin, NV');assert.deepEqual([reverse[0].searchParams.get('lat'),reverse[0].searchParams.get('lon')],['35.17','-114.57'],'only a rounded area leaves the device');await o.waitForFunction(()=>Number(document.querySelector('#court-map').dataset.resultCount)>=1,null,{timeout:15000});await o.locator('#search-toggle').click();await o.locator('#court-list').getByText('Laughlin fixture court').waitFor();await o.locator('#close-search').click();
   // High-accuracy timeout recovers without a second permission loop.
   const {page:f}=await newPage(()=>{let calls=0;Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){calls++;if(calls===1)fail({code:3});else ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:2000}});}}});});
   await f.goto(url,{waitUntil:'domcontentloaded'});await f.locator('.user-location').waitFor();await f.locator('#location-updates[open]').waitFor();assert.match(await f.locator('#map-location-status').innerText(),/approximate location/);assert.ok(Number(await f.locator('#court-map').getAttribute('data-result-count'))>0);
@@ -50,6 +51,6 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
   for(let i=1;i<boxes.length;i++)assert.ok(boxes[i].top>=boxes[i-1].bottom);
   assert.deepEqual(errors,[]);
   await d.screenshot({path:(process.env.QA_OUT||require('node:os').tmpdir()+'/bucketlist-qa')+'/arizona-location-help.png'});
-  console.log('PASS: Arizona GPS, provider failure/retry, nearby distances, permission denial, embedded recovery, out-of-state rejection, coarse fallback, current share link, and mobile notices.');
+  console.log('PASS: GPS centering, provider failure/retry, nearby distances, permission denial, searching and looking up courts in another state, a device outside Arizona getting its own area name and nearby courts, embedded recovery, coarse fallback, current share link, and mobile notices.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

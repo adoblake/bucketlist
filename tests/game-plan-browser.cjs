@@ -6,7 +6,7 @@ const url=process.env.APP_URL||'http://127.0.0.1:3114';
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||undefined,args:['--no-sandbox']});
  const errors=[];const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,colorScheme:'light',timezoneId:'America/Phoenix'});
- await context.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','shared-courts-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
+ await context.addInitScript(()=>{(localStorage.setItem('bucketlist-release-seen','courts-everywhere-v1'),localStorage.setItem('bucketlist-welcome-seen','yes'));Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:33.4715,longitude:-111.9834,accuracy:30}});}}});});
  await context.route('https://tile.openstreetmap.org/**',r=>r.abort());await context.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));
  const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
  async function dismissUpdates(){await p.waitForTimeout(350);if(await p.locator('#location-updates').evaluate(e=>e.open))await p.locator('#dismiss-location-updates').click();}

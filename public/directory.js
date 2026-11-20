@@ -1,4 +1,3 @@
-import { arizonaBounds, isInArizona } from './arizona.js';
 // Overpass outputs each park followed by its tagged basketball features.
 export function normalizeParkDirectory(elements, city='') {
  const found=new Map();let current=null;
@@ -44,15 +43,31 @@ export async function locateDestination(query,signal,fetcher=fetch){
  return {lat,lng};
 }
 
-export async function locateArizonaDestination(query,signal,fetcher=fetch){
- const {west,north,east,south}=arizonaBounds;
- const params=new URLSearchParams({format:'json',limit:'5',countrycodes:'us',bounded:'1',viewbox:[west,north,east,south].join(','),q:query+', Arizona, USA'});
+// Search a place anywhere, preferring results near the map the player is looking at.
+export async function searchPlace(query,near,signal,fetcher=fetch){
+ const params=new URLSearchParams({format:'json',limit:'1',q:query});
+ if(near&&[near.west,near.north,near.east,near.south].every(Number.isFinite))params.set('viewbox',[near.west,near.north,near.east,near.south].map(v=>v.toFixed(4)).join(','));
  const response=await fetcher('https://nominatim.openstreetmap.org/search?'+params,{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(10000)]):AbortSignal.timeout(10000)});
- if(!response.ok)throw Error('Arizona location search is unavailable. Try a saved court name or use Near me.');
- const places=await response.json();
- const place=Array.isArray(places)&&places.find(p=>isInArizona(Number(p.lat),Number(p.lon)));
- if(!place)throw Error('Choose a city, address, or court in Arizona.');
- return {lat:Number(place.lat),lng:Number(place.lon)};
+ if(!response.ok)throw Error('Place search is unavailable. Try a saved court name or use Near me.');
+ const places=await response.json(),place=Array.isArray(places)?places[0]:null,lat=Number(place?.lat),lng=Number(place?.lon);
+ if(!place||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>85||Math.abs(lng)>180)throw Error('We couldn’t find that place. Try a city, address, or park name.');
+ return {lat,lng,label:shortPlaceName(place.display_name)||query};
+}
+const shortPlaceName=name=>String(name||'').split(',').map(v=>v.trim()).filter(Boolean).slice(0,2).join(', ');
+
+// Name the player's area ("Chicago, IL"). Coordinates are rounded to about 1 km before they leave the device.
+export async function describeArea(lat,lng,signal,fetcher=fetch){
+ const params=new URLSearchParams({format:'jsonv2',zoom:'10',addressdetails:'1',lat:lat.toFixed(2),lon:lng.toFixed(2)});
+ const response=await fetcher('https://nominatim.openstreetmap.org/reverse?'+params,{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(8000)]):AbortSignal.timeout(8000)});
+ if(!response.ok)throw Error('Area name unavailable.');
+ return areaName((await response.json())?.address);
+}
+export function areaName(a){
+ if(!a||typeof a!=='object')return '';
+ const place=a.city||a.town||a.village||a.municipality||a.hamlet||a.suburb||a.county||'';
+ const iso=String(a['ISO3166-2-lvl4']||''),us=a.country_code==='us';
+ const region=us&&/^US-[A-Z]{2}$/.test(iso)?iso.slice(3):us?a.state:a.country;
+ return [...new Set([place,region].filter(Boolean).map(String))].join(', ').slice(0,60);
 }
 
 export function areaCourtQuery({south,west,north,east}){
@@ -68,11 +83,10 @@ export function normalizeAreaCourts(elements){
  return [...found.values()];
 }
 
-export async function discoverCourtsInBounds(bounds,signal,fetcher=fetch,arizonaOnly=false){
- let query=areaCourtQuery(bounds);let lastError;
- if(arizonaOnly)query=query.replace('nwr[','area["ISO3166-2"="US-AZ"]["admin_level"="4"]->.az;nwr(area.az)[');
+export async function discoverCourtsInBounds(bounds,signal,fetcher=fetch){
+ const query=areaCourtQuery(bounds);let lastError;
  for(const endpoint of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']){
-  try{const response=await fetcher(endpoint+'?data='+encodeURIComponent(query),{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(20000)]):AbortSignal.timeout(20000)});if(!response.ok)throw Error('Court directory unavailable.');const result=await response.json();if(result.remark||!Array.isArray(result.elements))throw Error('Incomplete directory response.');return normalizeAreaCourts(result.elements).filter(c=>c.lat>=bounds.south&&c.lat<=bounds.north&&c.lng>=bounds.west&&c.lng<=bounds.east&&(!arizonaOnly||isInArizona(c.lat,c.lng)));}catch(error){if(signal?.aborted)throw error;lastError=error;}
+  try{const response=await fetcher(endpoint+'?data='+encodeURIComponent(query),{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(20000)]):AbortSignal.timeout(20000)});if(!response.ok)throw Error('Court directory unavailable.');const result=await response.json();if(result.remark||!Array.isArray(result.elements))throw Error('Incomplete directory response.');return normalizeAreaCourts(result.elements).filter(c=>c.lat>=bounds.south&&c.lat<=bounds.north&&c.lng>=bounds.west&&c.lng<=bounds.east);}catch(error){if(signal?.aborted)throw error;lastError=error;}
  }
  throw lastError||Error('Court directory unavailable.');
 }

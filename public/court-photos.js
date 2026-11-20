@@ -67,7 +67,7 @@ export function mountCourtMedia(container,court,{fetcher=fetch}={}){
  const find=s=>container.querySelector(s),frame=find('.court-photo-frame'),imageLink=find('.court-photo-link'),loading=find('.court-photo-loading'),error=find('.court-photo-error'),caption=find('.court-photo-name'),date=find('.court-photo-date'),credit=find('.court-photo-credit');
  container.dataset.courtId=court.id;
  find('[data-photo-view="ground"]').hidden=!ground;
- const mapsQuery=court.name&&court.name!=='Basketball court'?court.name+', '+(court.city||'Arizona')+' near '+court.lat+','+court.lng:court.lat+','+court.lng;
+ const mapsQuery=court.name&&court.name!=='Basketball court'?court.name+', '+(court.city||'this area')+' near '+court.lat+','+court.lng:court.lat+','+court.lng;
  find('.court-photo-maps').href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapsQuery);
  const active=id=>!disposed&&id===ticket&&container.isConnected;
  function fail(id){if(!active(id))return;clearTimeout(imageTimer);loading.hidden=true;imageLink.hidden=true;error.hidden=false;frame.dataset.loading='false';}
