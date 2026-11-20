@@ -40,7 +40,8 @@ async function extract(state){
  if(existsSync(features))return features;
  const pbf=new URL(`${state}.osm.pbf`,cacheDir),filtered=new URL(`${state}.filtered.osm.pbf`,cacheDir),partial=new URL(`${state}.partial`,cacheDir);
  try{
-  await run('curl',['-fsSL','--retry','5','--retry-delay','30','--retry-all-errors','-A','bucketlist-court-directory/1.0','-o',path(pbf),MIRROR+SLUGS[state]+'-latest.osm.pbf'],{maxBuffer:1<<20});
+  // Bounded download: 3 retries, abort a transfer that stalls below 100 KB/s for 2 minutes, never more than 40 minutes.
+  await run('curl',['-fsSL','--retry','3','--retry-delay','20','--retry-all-errors','--connect-timeout','30','--speed-limit','102400','--speed-time','120','--max-time','2400','-A','bucketlist-court-directory/1.0','-o',path(pbf),MIRROR+SLUGS[state]+'-latest.osm.pbf'],{maxBuffer:1<<20});
   await run('osmium',['tags-filter','--overwrite','-o',path(filtered),path(pbf),...FILTERS]);
   await rm(pbf,{force:true});
   await run('osmium',['export','--overwrite','-f','geojsonseq','--format-option','print_record_separator=false','-a','type,id','-o',path(partial),path(filtered)]);
@@ -77,15 +78,19 @@ async function records(features){
 await mkdir(cacheDir,{recursive:true});await mkdir(outDir,{recursive:true});
 const todo=only.length?only:STATES;
 const started=Date.now();let done=0;
-const failed=[];
+const failed=[];let failedInARow=0;
+// Stop early when the source itself is down, rather than spending minutes failing on every remaining state.
+const GIVE_UP_AFTER=3;
 for(const state of todo){
+ if(failedInARow>=GIVE_UP_AFTER){console.warn(`${GIVE_UP_AFTER} states failed in a row; the source looks unavailable, so ${state} and later states wait for the next run.`);failed.push(...todo.slice(todo.indexOf(state)));break;}
  if(budgetMs&&Date.now()-started>budgetMs){console.warn(`Time budget used up; ${state} and later states wait for the next run.`);failed.push(...todo.slice(todo.indexOf(state)));break;}
  let data;
  try{data=await records(await extract(state));}
  catch(error){
   // Keep going so one stubborn state doesn't block the rest.
-  console.warn(`${state}: ${String(error.stderr||error.message).trim().split('\n').pop()}; its previous tiles (if any) are kept.`);failed.push(state);continue;
+  console.warn(`${state}: ${String(error.stderr||error.message).trim().split('\n').pop()}; its previous tiles (if any) are kept.`);failed.push(state);failedInARow++;continue;
  }
+ failedInARow=0;
  const locations=buildLocations(data,state);
  await writeFile(new URL(`state-${state}.json`,cacheDir),JSON.stringify(locations));
  done++;console.log(`${state}: ${data.courts.length} court features → ${locations.length} locations (${done}/${todo.length}, ${Math.round((Date.now()-started)/1000)}s)`);
