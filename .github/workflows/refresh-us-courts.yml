@@ -54,6 +54,8 @@ jobs:
         timeout-minutes: 320
         env:
           STATES: ${{ github.event.inputs.states }}
+          # Stop starting new states before the step limit, so finished states are still committed.
+          BUDGET_MINUTES: '270'
         run: |
           set +e
           node scripts/build-us-courts.mjs $STATES

@@ -13,10 +13,13 @@ import {buildLocations,tileKey,TILE_SIZE} from '../public/us-courts.js';
 
 const root=new URL('../',import.meta.url),cacheDir=new URL('.cache/us-courts/',root),outDir=new URL('public/data/us/',root);
 const ENDPOINTS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
-const STATES=['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','PR'];
+// Most populous first, so a run that is cut short still covers the most players.
+const STATES=['CA','TX','FL','NY','PA','IL','OH','GA','NC','MI','NJ','VA','WA','AZ','TN','MA','IN','MD','MO','WI','CO','MN','SC','AL','LA','KY','OR','OK','CT','UT','IA','NV','AR','KS','MS','NM','NE','ID','WV','HI','NH','ME','MT','RI','DE','SD','ND','AK','DC','VT','WY','PR'];
 const CHUNK=3;// degrees; small enough for dense metros, few enough to finish in reasonable time
 // Alaska and Hawaii span huge, mostly empty boxes, so they use bigger pieces.
 const CHUNK_FOR={AK:8,HI:5};
+// Optional time budget (minutes): stop starting new states when it runs out, still write tiles for what's done.
+const budgetMs=Number(process.env.BUDGET_MINUTES||0)*60000;
 const only=process.argv.slice(2).map(s=>s.toUpperCase()).filter(s=>STATES.includes(s));
 if(process.argv.length>2&&!only.length)throw Error('Unknown state code. Use two-letter codes such as GA FL NY CA.');
 
@@ -51,6 +54,7 @@ const todo=only.length?only:STATES;
 const started=Date.now();let done=0;
 const failed=[];
 for(const state of todo){
+ if(budgetMs&&Date.now()-started>budgetMs){console.warn(`Time budget used up; ${state} and later states wait for the next run.`);failed.push(...todo.slice(todo.indexOf(state)));break;}
  const b=stateBounds.get(state);if(!b){console.warn('No boundary for '+state+', skipping.');failed.push(state);continue;}
  const records={courts:[],containers:[],towns:[]};
  try{
