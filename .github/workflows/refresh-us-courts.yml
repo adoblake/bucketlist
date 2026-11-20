@@ -1,0 +1,91 @@
+# Builds the nationwide court directory (public/data/us) from OpenStreetMap and commits it,
+# so players anywhere in the US see the courts and park details near them.
+# Runs monthly, by hand from the Actions tab, and whenever the build script changes on a claude/ branch.
+name: Refresh court directory
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: Two-letter state codes to refresh (blank for every state)
+        required: false
+        default: ''
+  schedule:
+    - cron: '17 9 1 * *'
+  push:
+    branches: ['claude/**']
+    paths:
+      - scripts/build-us-courts.mjs
+      - .github/workflows/refresh-us-courts.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-us-courts-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Raw Overpass answers are cached between runs, so a run that times out resumes where it stopped.
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/us-courts
+          key: us-courts-${{ github.run_id }}
+          restore-keys: us-courts-
+
+      # A new month starts from fresh OpenStreetMap data; reruns within a month reuse what was fetched.
+      - name: Drop last month's cached answers
+        run: |
+          stamp=$(date -u +%Y-%m)
+          if [ -d .cache/us-courts ] && [ "$(cat .cache/us-courts/month 2>/dev/null)" != "$stamp" ]; then rm -rf .cache/us-courts; fi
+          mkdir -p .cache/us-courts && echo "$stamp" > .cache/us-courts/month
+
+      - name: Build the directory
+        id: build
+        timeout-minutes: 320
+        env:
+          STATES: ${{ github.event.inputs.states }}
+        run: |
+          set +e
+          node scripts/build-us-courts.mjs $STATES
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" != 0 ] && [ "$code" != 2 ]; then exit "$code"; fi
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache/us-courts
+          key: us-courts-${{ github.run_id }}
+
+      - name: Check the directory code
+        run: node --test tests/us-courts.test.js
+
+      - name: Commit the directory
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898699+github-actions[bot]@users.noreply.github.com'
+          git add public/data/us
+          if git diff --cached --quiet; then echo 'No changes.'; exit 0; fi
+          locations=$(node -e "console.log(require('./public/data/us/index.json').locations)")
+          git commit -m "Refresh the nationwide court directory ($locations locations)" -m 'Data © OpenStreetMap contributors, ODbL 1.0.'
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((attempt * 10))
+          done
+          exit 1
+
+      - name: Report states that still need a run
+        if: steps.build.outputs.code == '2'
+        run: |
+          echo '::warning::Some states could not be fetched this run; their earlier courts were kept. Re-run this workflow to resume.'
+          exit 1
