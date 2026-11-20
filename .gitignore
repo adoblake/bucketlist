@@ -8,3 +8,5 @@ web-dist/
 
 community-dist/
 .community-local.sqlite*
+
+.cache/

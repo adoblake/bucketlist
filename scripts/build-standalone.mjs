@@ -19,6 +19,7 @@ const appUpdatesCode=(await readFile(new URL('../public/app-updates.js',import.m
 const gamePlanCode=(await readFile(new URL('../public/game-plan.js',import.meta.url),'utf8')).replace(/^export /gm,'').replace(/^import .*?;\n/gm,'');
 const uiIconsCode=(await readFile(new URL('../public/ui-icons.js',import.meta.url),'utf8')).replace(/^export /gm,'');
 const locationCode=(await readFile(new URL('../public/location.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+const usCourtsCode=(await readFile(new URL('../public/us-courts.js',import.meta.url),'utf8')).replace(/^import .*?;\n/gm,'').replace(/^export /gm,'');
 const domain=(await readFile(new URL('../public/domain.js',import.meta.url),'utf8')).replace(/^export /gm,'');
 const directory=(await readFile(new URL('../public/directory.js',import.meta.url),'utf8')).replace(/^export /gm,'').replace(/^import .*?;\n/gm,'');
 const demo=(await readFile(new URL('../public/demo.js',import.meta.url),'utf8')).replace(/^export /gm,'');
@@ -31,7 +32,7 @@ const clustersLicense=await readFile(new URL('../public/vendor/markercluster/MIT
 html=html.replace('<link rel="stylesheet" href="/markercluster.css">','<style>'+clustersCSS+'</style>').replace('<script src="/markercluster.js"></script>','<script>'+clustersJS+'</script>');
 const sharedCourtCode=(await readFile(new URL('../public/shared-courts.js',import.meta.url),'utf8')).replace(/^import .*?;\n/gm,'').replace(/^export /gm,'');
 const app=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/^import .*?;\n/gm,'');
-html=html.replace('<link rel="stylesheet" href="/leaflet.css">','<style>'+leafletCSS+'</style>').replace('<script src="/leaflet.js"></script>','<script>'+leafletJS.replaceAll('</script','<\\/script')+'</script>').replace('<link rel="stylesheet" href="/styles.css">','<style>'+css+'</style>').replace('<script type="module" src="/app.js"></script>','').replace('</body>','<script>'+siteConfigCode+'\n'+appUpdatesCode+'\n'+courtPhotoCode+'\n'+locationCode+'\n'+domain+'\n'+directory+'\n'+demo+'\n'+schedule+'\n'+cityData+'\n'+phoenixData+'\n'+gamePlanCode+'\n'+uiIconsCode+'\n'+sharedCourtCode+'\n'+app+'</script></body>');
+html=html.replace('<link rel="stylesheet" href="/leaflet.css">','<style>'+leafletCSS+'</style>').replace('<script src="/leaflet.js"></script>','<script>'+leafletJS.replaceAll('</script','<\\/script')+'</script>').replace('<link rel="stylesheet" href="/styles.css">','<style>'+css+'</style>').replace('<script type="module" src="/app.js"></script>','').replace('</body>','<script>'+siteConfigCode+'\n'+appUpdatesCode+'\n'+courtPhotoCode+'\n'+locationCode+'\n'+usCourtsCode+'\n'+domain+'\n'+directory+'\n'+demo+'\n'+schedule+'\n'+cityData+'\n'+phoenixData+'\n'+gamePlanCode+'\n'+uiIconsCode+'\n'+sharedCourtCode+'\n'+app+'</script></body>');
 html='<!-- Leaflet 1.9.4 license\n'+await readFile(new URL('../public/vendor/leaflet/LICENSE',import.meta.url),'utf8')+'\n-->\n'+html;
 html='<!-- Leaflet.markercluster MIT license\n'+clustersLicense+'\n-->\n'+html;
 html=html.replace(/\r\n/g,'\n').replace(/[ \t]+$/gm,'');

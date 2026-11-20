@@ -16,7 +16,7 @@ const standalone='file://'+root+'BucketList.html';
 
 const suites=[
  ['browser',{APP_URL:map}],['game-plan-browser',{APP_URL:map}],['appearance-notices',{APP_URL:map}],['location',{APP_URL:map}],
- ['calendar',{APP_URL:map}],['courts',{APP_URL:map}],['showcase',{APP_URL:map}],['places-browser',{APP_URL:map}],
+ ['calendar',{APP_URL:map}],['courts',{APP_URL:map}],['showcase',{APP_URL:map}],['places-browser',{APP_URL:map}],['directory-browser',{APP_URL:map}],
  ['court-photos',{APP_URL:standalone}],['phone',{PHONE_URL:phone}],['app-updates',{APP_URL:phone}],
  ['community-browser',{COMMUNITY_URL:community}],['email-auth-browser',{COMMUNITY_URL:community}],['safety-browser',{COMMUNITY_URL:community}],
  ['play-browser',{COMMUNITY_ORIGIN:playOrigin,APP_URL:map}],['play-anywhere-browser',{COMMUNITY_ORIGIN:playOrigin}],
