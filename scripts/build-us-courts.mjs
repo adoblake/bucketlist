@@ -3,6 +3,7 @@
 //
 //   npm run refresh:us-courts                 download (or reuse cached) data for every state, then write tiles
 //   npm run refresh:us-courts -- GA FL NY CA  only these states (tiles for other states are kept)
+//   npm run refresh:us-courts -- --tiles-only rewrite tiles from already-built states
 //
 // Source: Geofabrik's daily per-state OpenStreetMap extracts (download.geofabrik.de), filtered with osmium-tool
 // (`apt install osmium-tool` / `brew install osmium-tool`). The public Overpass servers can't serve a nationwide
@@ -28,8 +29,11 @@ const SLUGS={CA:'california',TX:'texas',FL:'florida',NY:'new-york',PA:'pennsylva
 const STATES=Object.keys(SLUGS);
 // Optional time budget (minutes): stop starting new states when it runs out, still write tiles for what's done.
 const budgetMs=Number(process.env.BUDGET_MINUTES||0)*60000;
-const only=process.argv.slice(2).map(s=>s.toUpperCase()).filter(s=>STATES.includes(s));
-if(process.argv.length>2&&!only.length)throw Error('Unknown state code. Use two-letter codes such as GA FL NY CA.');
+// --tiles-only: skip downloading and just (re)write the tiles from the built states in .cache/us-courts/
+// (the workflow builds states in parallel jobs, then merges them this way).
+const args=process.argv.slice(2),tilesOnly=args.includes('--tiles-only');
+const only=args.filter(a=>!a.startsWith('--')).map(s=>s.toUpperCase()).filter(s=>STATES.includes(s));
+if(args.some(a=>!a.startsWith('--'))&&!only.length)throw Error('Unknown state code. Use two-letter codes such as GA FL NY CA.');
 
 // Everything the directory needs: courts (any sport tag; basketball is picked out later), the parks, schools and
 // centres that contain them, and named places for the city line.
@@ -40,8 +44,8 @@ async function extract(state){
  if(existsSync(features))return features;
  const pbf=new URL(`${state}.osm.pbf`,cacheDir),filtered=new URL(`${state}.filtered.osm.pbf`,cacheDir),partial=new URL(`${state}.partial`,cacheDir);
  try{
-  // Bounded download: 3 retries, abort a transfer that stalls below 100 KB/s for 2 minutes, never more than 40 minutes.
-  await run('curl',['-fsSL','--retry','3','--retry-delay','20','--retry-all-errors','--connect-timeout','30','--speed-limit','102400','--speed-time','120','--max-time','2400','-A','bucketlist-court-directory/1.0','-o',path(pbf),MIRROR+SLUGS[state]+'-latest.osm.pbf'],{maxBuffer:1<<20});
+  // Bounded download: 3 retries, abort a transfer that stalls below 100 KB/s for 2 minutes, never more than 70 minutes.
+  await run('curl',['-fsSL','--retry','3','--retry-delay','20','--retry-all-errors','--connect-timeout','30','--speed-limit','102400','--speed-time','120','--max-time','4200','-A','bucketlist-court-directory/1.0','-o',path(pbf),MIRROR+SLUGS[state]+'-latest.osm.pbf'],{maxBuffer:1<<20});
   await run('osmium',['tags-filter','--overwrite','-o',path(filtered),path(pbf),...FILTERS]);
   await rm(pbf,{force:true});
   await run('osmium',['export','--overwrite','-f','geojsonseq','--format-option','print_record_separator=false','-a','type,id','-o',path(partial),path(filtered)]);
@@ -76,7 +80,7 @@ async function records(features){
 }
 
 await mkdir(cacheDir,{recursive:true});await mkdir(outDir,{recursive:true});
-const todo=only.length?only:STATES;
+const todo=tilesOnly?[]:only.length?only:STATES;
 const started=Date.now();let done=0;
 const failed=[];let failedInARow=0;
 // Stop early when the source itself is down, rather than spending minutes failing on every remaining state.

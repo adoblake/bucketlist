@@ -1,15 +1,13 @@
 # Builds the nationwide court directory (public/data/us) from OpenStreetMap (Geofabrik's daily state extracts) and commits it,
 # so players anywhere in the US see the courts and park details near them.
-# Runs monthly, by hand from the Actions tab, and whenever the build script changes on a claude/ branch.
+# Runs monthly, by hand from the Actions tab, and whenever the build changes on a claude/ branch.
+#
+# Eight jobs each build a group of states in parallel (about 1.1 GB of downloads each), then one job merges
+# them into map tiles and commits. A group that fails keeps that group's earlier courts; the rest still publish.
 name: Refresh court directory
 
 on:
   workflow_dispatch:
-    inputs:
-      states:
-        description: Two-letter state codes to refresh (blank for every state)
-        required: false
-        default: ''
   schedule:
     - cron: '17 9 1 * *'
   push:
@@ -26,55 +24,97 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  states:
+    name: Build ${{ matrix.group }}
     runs-on: ubuntu-latest
-    timeout-minutes: 340
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {group: CA, states: 'CA'}
+          - {group: TX+, states: 'TX IN OK MT DE WY'}
+          - {group: FL+, states: 'FL TN SC CT NV RI AK'}
+          - {group: NY+, states: 'NY AZ MA AL NM WV DC'}
+          - {group: PA+, states: 'PA VA MD CO UT MS NH PR'}
+          - {group: NC+, states: 'NC WA LA OR IA NE ME'}
+          - {group: OH+, states: 'OH MI NJ MN KY AR SD VT'}
+          - {group: IL+, states: 'IL GA MO WI KS ID HI ND'}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install osmium
         run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
 
-      # Filtered state data is cached between runs, so a run that times out resumes where it stopped.
+      # Filtered state data is cached for the month, so a re-run only downloads states that didn't finish.
+      - name: Cache key
+        id: key
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@v4
         with:
           path: .cache/us-courts
-          key: us-courts-${{ github.run_id }}
-          restore-keys: us-courts-
+          key: us-courts-${{ steps.key.outputs.month }}-${{ matrix.group }}-${{ github.run_id }}
+          restore-keys: us-courts-${{ steps.key.outputs.month }}-${{ matrix.group }}-
 
-      # A new month starts from fresh OpenStreetMap data; reruns within a month reuse what was fetched.
-      - name: Drop last month's cached data
-        run: |
-          stamp=$(date -u +%Y-%m)
-          if [ -d .cache/us-courts ] && [ "$(cat .cache/us-courts/month 2>/dev/null)" != "$stamp" ]; then rm -rf .cache/us-courts; fi
-          mkdir -p .cache/us-courts && echo "$stamp" > .cache/us-courts/month
-
-      - name: Build the directory
-        id: build
-        timeout-minutes: 320
-        env:
-          STATES: ${{ github.event.inputs.states }}
-          # Stop starting new states before the step limit, so finished states are still committed.
-          BUDGET_MINUTES: '270'
+      - name: Build ${{ matrix.states }}
+        timeout-minutes: 80
         run: |
           set +e
-          node scripts/build-us-courts.mjs $STATES
+          node scripts/build-us-courts.mjs ${{ matrix.states }}
           code=$?
-          echo "code=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" != 0 ] && [ "$code" != 2 ]; then exit "$code"; fi
+          echo "code=$code" >> "$GITHUB_ENV"
 
       - uses: actions/cache/save@v4
         if: always()
         with:
-          path: .cache/us-courts
-          key: us-courts-${{ github.run_id }}
+          path: .cache/us-courts/*.geojsonseq
+          key: us-courts-${{ steps.key.outputs.month }}-${{ matrix.group }}-${{ github.run_id }}
 
+      # Hand only this group's built states to the merge job.
+      - name: Collect built states
+        if: always()
+        run: |
+          mkdir -p built
+          for s in ${{ matrix.states }}; do [ -f ".cache/us-courts/state-$s.json" ] && cp ".cache/us-courts/state-$s.json" built/; done
+          ls built
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: states-${{ strategy.job-index }}
+          path: built/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Flag states that still need a run
+        if: env.code == '2'
+        run: |
+          echo '::warning::Some states in ${{ matrix.group }} could not be built; their earlier courts are kept. Re-run this job to resume.'
+          exit 1
+
+  publish:
+    needs: states
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: states-*
+          path: .cache/us-courts
+          merge-multiple: true
+      - name: Write map tiles
+        run: |
+          ls .cache/us-courts
+          node scripts/build-us-courts.mjs --tiles-only
       - name: Check the directory code
         run: node --test tests/us-courts.test.js
-
       - name: Commit the directory
         run: |
           git config user.name 'github-actions[bot]'
@@ -87,10 +127,4 @@ jobs:
             git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
             sleep $((attempt * 10))
           done
-          exit 1
-
-      - name: Report states that still need a run
-        if: steps.build.outputs.code == '2'
-        run: |
-          echo '::warning::Some states could not be fetched this run; their earlier courts were kept. Re-run this workflow to resume.'
           exit 1
