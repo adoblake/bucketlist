@@ -80,7 +80,7 @@ function applyTheme(preference){
 let signedIn=false,pendingAction=null,stopCourtMedia=null;
 try{signedIn=sessionStorage.getItem('bucketlist-demo-session')==='active';}catch{}
 function requireSession(action){if(signedIn)return true;openLogin(action);return false;}
-function openLogin(action){pendingAction=action;showDialog('LOCAL GAME DEMO',`<div class="login-brand">${brandLockup({heading:true,tagline:true})}</div><p class="muted">Try the sample games with a profile saved on this device. For real groups and messages, open Shared groups & chat from the menu.</p><div class="profile-benefits"><div><strong>Find your crew</strong><span>Join teams and keep your game plans together.</span></div><div><strong>Keep the conversation going</strong><span>Coordinate in game chats and court communities.</span></div><div><strong>See your progress</strong><span>Log sessions, follow your stats, and choose what you share.</span></div></div><form id="login-form" class="stack"><label>Your display name<input name="displayName" maxlength="40" value="${state.profile.name==='You'?'':esc(state.profile.name)}" placeholder="What should the crew call you?" required autocomplete="nickname"></label><p class="form-error" id="login-error" role="alert"></p><button class="primary">OPEN LOCAL DEMO PROFILE</button></form><button class="secondary full" id="preview-profile-benefits">Explore a populated player demo</button><button class="text-button full" id="guest-continue">Keep browsing as a guest</button><p class="note">Demo profile only: information is saved in this browser, not a secure online account. No password is collected. Profile details and stats are private by default.</p>`);$('#preview-profile-benefits').onclick=()=>{$('#detail-dialog').close();pendingAction=null;enterShowcase();};$('#guest-continue').onclick=()=>{pendingAction=null;$('#detail-dialog').close();};$('#login-form').onsubmit=e=>{e.preventDefault();const name=new FormData(e.target).get('displayName').trim();if(!name){$('#login-error').textContent='Enter a display name.';return;}state.profile.name=name;signedIn=true;try{sessionStorage.setItem('bucketlist-demo-session','active');if(!showcaseMode)localStorage.setItem('bucketlist-profile-session','active');localStorage.setItem('bucketlist-welcome-seen','yes');}catch{}save();const next=pendingAction;pendingAction=null;$('#detail-dialog').close();render();if(next)next();};}
+function openLogin(action){pendingAction=action;showDialog('LOCAL GAME DEMO',`<div class="login-brand">${brandLockup({heading:true,tagline:true})}</div><p class="muted">Try the sample games with a profile saved on this device. For real groups and messages, open Shared groups & chat from the menu.</p><div class="profile-benefits"><div><strong>Find your crew</strong><span>Join teams and keep your game plans together.</span></div><div><strong>Keep the conversation going</strong><span>Coordinate in game chats and court communities.</span></div><div><strong>See your progress</strong><span>Log sessions, follow your stats, and choose what you share.</span></div></div><form id="login-form" class="stack"><label>Your display name<input name="displayName" maxlength="40" value="${state.profile.name==='You'?'':esc(state.profile.name)}" placeholder="What should the crew call you?" required autocomplete="nickname"></label><p class="form-error" id="login-error" role="alert"></p><button class="primary">OPEN LOCAL DEMO PROFILE</button></form><button class="secondary full" id="preview-profile-benefits">Explore a populated player demo</button><button class="text-button full" id="guest-continue">Keep browsing as a guest</button><p class="note">Demo profile only: information is saved in this browser, not a secure online account. No password is collected. Profile details and stats are private by default.</p>`);$('#preview-profile-benefits').onclick=()=>{$('#detail-dialog').close();pendingAction=null;enterShowcase();};$('#guest-continue').onclick=()=>{pendingAction=null;$('#detail-dialog').close();};$('#login-form').onsubmit=e=>{e.preventDefault();const name=new FormData(e.target).get('displayName').trim();if(!name){$('#login-error').textContent='Enter a display name.';return;}state.profile.name=name;signedIn=true;areaCardAcknowledged=false;seenLocationUpdates.clear();try{sessionStorage.setItem('bucketlist-demo-session','active');if(!showcaseMode)localStorage.setItem('bucketlist-profile-session','active');localStorage.removeItem('bucketlist-area-card-ack');sessionStorage.removeItem('bucketlist-location-updates-v1');localStorage.setItem('bucketlist-welcome-seen','yes');}catch{}save();const next=pendingAction;pendingAction=null;$('#detail-dialog').close();render();if(next)next();};}
 let showcaseMode=false;try{showcaseMode=sessionStorage.getItem('bucketlist-showcase')==='active';}catch{}
 let personalState=readState();try{const remembered=localStorage.getItem('bucketlist-profile-session');signedIn=remembered==='active'||(remembered!=='signed-out'&&(signedIn||personalState.profile.name!=='You'));}catch{}let state=showcaseMode?readState('bucketlist-showcase-state'):personalState;if(showcaseMode){if(!state.stats.length)state=createShowcase();state.showcase=true;state.showcaseSince=createShowcase().showcaseSince;signedIn=true;}let tab='discover',query='Phoenix',selectedCourt='pierce',coordinates=null,currentDialog=null,whenFilter='upcoming',styleFilter='Any style',discoveryMode='parks';
 let manualPlanArea=null,gamesListExpanded=false,stopPlanMedia=null,demoPlanOpened=false;
@@ -102,6 +102,11 @@ let noticeAreaLabel='Phoenix area',noticeTimer=null;
 const pendingLocationUpdates=new Set();
 let seenLocationUpdates=new Set();
 try{const saved=JSON.parse(sessionStorage.getItem('bucketlist-location-updates-v1')||'[]');if(Array.isArray(saved))seenLocationUpdates=new Set(saved.filter(k=>typeof k==='string').slice(-80));}catch{}
+// "Got it" (or ✕) on the area card holds until the player next signs in: after that the card never opens by
+// itself, only the bell's dot marks a real problem (location blocked, maps down). Moving the map never opens it.
+const AREA_CARD_ACK='bucketlist-area-card-ack',PROBLEM_TOPIC=/unavailable|denied|embedded/;
+let areaCardAcknowledged=false;try{areaCardAcknowledged=localStorage.getItem(AREA_CARD_ACK)==='yes';}catch{}
+function acknowledgeAreaCard(){areaCardAcknowledged=true;try{localStorage.setItem(AREA_CARD_ACK,'yes');}catch{}dismissLocationUpdates();}
 function dismissLocationUpdates(){
  for(const key of pendingLocationUpdates)seenLocationUpdates.add(key);
  pendingLocationUpdates.clear();$('#updates-badge').hidden=true;$('#location-updates').open=false;
@@ -109,18 +114,21 @@ function dismissLocationUpdates(){
 }
 function openPendingLocationUpdates(){
  clearTimeout(noticeTimer);
- if(!pendingLocationUpdates.size||document.querySelector('dialog[open]')||!$('#map-search').hidden||!$('#app-menu').hidden)return;
+ if(areaCardAcknowledged||!pendingLocationUpdates.size||document.querySelector('dialog[open]')||!$('#map-search').hidden||!$('#app-menu').hidden)return;
  $('#location-updates').open=true;
 }
 function announceLocationUpdate(topic='arrival'){
  const center=leafletMap?.getCenter(),area=center?center.lat.toFixed(1)+','+center.lng.toFixed(1):'phoenix';
  const key=today()+':'+area+':'+topic;
  if(seenLocationUpdates.has(key)||pendingLocationUpdates.has(key))return;
+ if(areaCardAcknowledged&&!PROBLEM_TOPIC.test(topic))return;
  pendingLocationUpdates.add(key);$('#updates-badge').hidden=false;
+ // Courts found while browsing the map get a dot on the bell, not a pop-up.
+ if(areaCardAcknowledged||topic.startsWith('new-courts'))return;
  clearTimeout(noticeTimer);noticeTimer=setTimeout(openPendingLocationUpdates,250);
 }
 $('#location-updates').addEventListener('toggle',()=>{if(!$('#location-updates').open)dismissLocationUpdates();});
-$('#close-location-updates').onclick=dismissLocationUpdates;$('#dismiss-location-updates').onclick=dismissLocationUpdates;
+$('#close-location-updates').onclick=acknowledgeAreaCard;$('#dismiss-location-updates').onclick=acknowledgeAreaCard;
 $('#location-open-browser').addEventListener('click',dismissLocationUpdates);
 
 const visibleCourts=()=>discoveryMode==='parks'?matchedCourts():matchedCourts().filter(c=>c.shared?c.openGameCount>0:eligibleGames(c.id).length);
@@ -135,7 +143,7 @@ function initMap(){
  markerLayer=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:44,disableClusteringAtZoom:15,animate:false,iconCreateFunction:cluster=>L.divIcon({className:'court-cluster',html:'<span aria-label="'+cluster.getChildCount()+' basketball locations; activate to zoom">'+cluster.getChildCount()+'</span>',iconSize:[44,44]})}).addTo(leafletMap);selectedMarkerLayer=L.layerGroup().addTo(leafletMap);
  leafletMap.on('popupclose',()=>{for(const marker of markerNodes.values())marker.getElement()?.setAttribute('aria-expanded','false');});
  leafletMap.on('dragstart zoomstart',()=>{if(centeringLocation)return;++destinationRequest;if($('#locate').disabled){++locationRequest;$('#locate').disabled=false;$('#refit-map').disabled=false;}noticeAreaLabel='This map area';locationMessage='Showing this map area · tap Near me to return to you.';});
- leafletMap.on('moveend',()=>{if(!mapReady)return;query='';$('#location').value='';renderDiscover(false);queueAreaLookup();if(!centeringLocation&&!$('#locate').disabled)announceLocationUpdate();});
+ leafletMap.on('moveend',()=>{if(!mapReady)return;query='';$('#location').value='';renderDiscover(false);queueAreaLookup();});
  refreshClock=setInterval(()=>{if(tab==='discover'&&!$('#detail-dialog').open){const previous=selectedCourt,wasOpen=mapPopup?.isOpen();renderDiscover(false);if(wasOpen&&selectedCourt===previous&&(discoveryMode==='parks'||eligibleGames(previous).length))courtPopup();}else if(tab==='games'&&!$('#detail-dialog').open)renderGames();},60000);
 }
 function updateAreaStatus(){const n=visibleCourts().length;$('#coverage-status').textContent=n+' basketball '+(n===1?'location':'locations')+(tab==='discover'?' in this map area':' near this area')+(areaMessage?' · '+areaMessage:'');$('#location-status').textContent=locationMessage;$('#map-location-status').textContent=locationMessage;$('#updates-heading').textContent=noticeAreaLabel;syncGamePlanLocation();}
