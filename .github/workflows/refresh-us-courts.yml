@@ -114,7 +114,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Start from the branch as it is now (not the commit that started the run), so re-runs and
+      # overlapping runs never have to merge generated files.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -123,22 +127,22 @@ jobs:
           pattern: states-*
           path: .cache/us-courts
           merge-multiple: true
-      - name: Write map tiles
-        run: |
-          mkdir -p .cache/us-courts && ls .cache/us-courts
-          node scripts/build-us-courts.mjs --tiles-only
       - name: Check the directory code
         run: node --test tests/us-courts.test.js
-      - name: Commit the directory
+      - name: Write map tiles and commit
         run: |
+          mkdir -p .cache/us-courts && ls .cache/us-courts
           git config user.name 'github-actions[bot]'
           git config user.email '41898699+github-actions[bot]@users.noreply.github.com'
-          git add public/data/us
-          if git diff --cached --quiet; then echo 'No changes.'; exit 0; fi
-          locations=$(node -e "console.log(require('./public/data/us/index.json').locations)")
-          git commit -m "Refresh the nationwide court directory ($locations locations)" -m 'Data © OpenStreetMap contributors, ODbL 1.0.'
+          # Tiles are regenerated on top of the latest branch each attempt; if another commit lands first, start over.
           for attempt in 1 2 3 4; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            git fetch -q origin "${GITHUB_REF_NAME}" && git reset -q --hard "origin/${GITHUB_REF_NAME}"
+            node scripts/build-us-courts.mjs --tiles-only
+            git add public/data/us
+            if git diff --cached --quiet; then echo 'No changes.'; exit 0; fi
+            locations=$(node -e "console.log(require('./public/data/us/index.json').locations)")
+            git commit -q -m "Refresh the nationwide court directory ($locations locations)" -m 'Data © OpenStreetMap contributors, ODbL 1.0.'
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
             sleep $((attempt * 10))
           done
           exit 1
