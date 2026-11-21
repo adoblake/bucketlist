@@ -45,7 +45,11 @@ const FILTERS=['nwr/sport','nwr/leisure=park,recreation_ground,sports_centre','n
 let links=null;
 async function downloadUrl(state){
  links??=(async()=>{
-  const r=await fetch(INDEX,{headers:{'User-Agent':UA},signal:AbortSignal.timeout(60000)});
+  // A single network blip here would fail every state, so retry a few times.
+  let r;for(let attempt=1;;attempt++){
+   try{r=await fetch(INDEX,{headers:{'User-Agent':UA},signal:AbortSignal.timeout(60000)});if(r.ok||r.status<500)break;}catch(error){if(attempt>=4)throw Error(`Geofabrik index ${INDEX}: ${error.message}`);}
+   if(attempt>=4)break;await new Promise(done=>setTimeout(done,5000*attempt));
+  }
   if(!r.ok)throw Error(`Geofabrik index ${INDEX}: HTTP ${r.status}`);
   const found=new Map();
   for(const {properties:p={}} of (await r.json()).features||[]){
@@ -57,6 +61,7 @@ async function downloadUrl(state){
   }
   return found;
  })();
+ links.catch(()=>{links=null;});
  const url=(await links).get('US-'+state);if(!url)throw Error(`No Geofabrik extract listed for US-${state} in ${INDEX}`);
  return url;
 }
