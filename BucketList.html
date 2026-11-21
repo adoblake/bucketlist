@@ -4494,9 +4494,9 @@ let noticeAreaLabel='Phoenix area',noticeTimer=null;
 const pendingLocationUpdates=new Set();
 let seenLocationUpdates=new Set();
 try{const saved=JSON.parse(sessionStorage.getItem('bucketlist-location-updates-v1')||'[]');if(Array.isArray(saved))seenLocationUpdates=new Set(saved.filter(k=>typeof k==='string').slice(-80));}catch{}
-// "Got it" (or ✕) on the area card holds until the player next signs in: after that the card never opens by
-// itself, only the bell's dot marks a real problem (location blocked, maps down). Moving the map never opens it.
-const AREA_CARD_ACK='bucketlist-area-card-ack',PROBLEM_TOPIC=/unavailable|denied|embedded/;
+// "Got it" (or ✕) on the area card holds until the player next signs in: no pop-up and no dot on the bell for the
+// rest of that session. Moving the map never opens it.
+const AREA_CARD_ACK='bucketlist-area-card-ack';
 let areaCardAcknowledged=false;try{areaCardAcknowledged=localStorage.getItem(AREA_CARD_ACK)==='yes';}catch{}
 function acknowledgeAreaCard(){areaCardAcknowledged=true;try{localStorage.setItem(AREA_CARD_ACK,'yes');}catch{}dismissLocationUpdates();}
 function dismissLocationUpdates(){
@@ -4512,11 +4512,10 @@ function openPendingLocationUpdates(){
 function announceLocationUpdate(topic='arrival'){
  const center=leafletMap?.getCenter(),area=center?center.lat.toFixed(1)+','+center.lng.toFixed(1):'phoenix';
  const key=today()+':'+area+':'+topic;
- if(seenLocationUpdates.has(key)||pendingLocationUpdates.has(key))return;
- if(areaCardAcknowledged&&!PROBLEM_TOPIC.test(topic))return;
+ if(areaCardAcknowledged||seenLocationUpdates.has(key)||pendingLocationUpdates.has(key))return;
  pendingLocationUpdates.add(key);$('#updates-badge').hidden=false;
  // Courts found while browsing the map get a dot on the bell, not a pop-up.
- if(areaCardAcknowledged||topic.startsWith('new-courts'))return;
+ if(topic.startsWith('new-courts'))return;
  clearTimeout(noticeTimer);noticeTimer=setTimeout(openPendingLocationUpdates,250);
 }
 $('#location-updates').addEventListener('toggle',()=>{if(!$('#location-updates').open)dismissLocationUpdates();});

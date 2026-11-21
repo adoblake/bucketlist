@@ -43,8 +43,8 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
   await openUpdates();await page.keyboard.press('Escape');
   assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
   assert.equal(await page.locator('#location-updates summary').evaluate(e=>e===document.activeElement),true);
-  // After "Got it" the card stays closed until the next sign-in: searching somewhere new, moving the map,
-  // a failed lookup or newly found courts never reopen it. It stays one tap away under the bell.
+  // After "Got it" the card stays quiet until the next sign-in: searching somewhere new, moving the map,
+  // a failed lookup or newly found courts never reopen it or mark the bell. Tapping the bell still shows it.
   await page.locator('#search-toggle').click();await page.locator('#location').fill('Scottsdale');await page.locator('#search-form button').click();
   await page.waitForTimeout(350);await page.locator('#close-search').click();await page.waitForTimeout(600);
   assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
@@ -54,12 +54,12 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
   await page.route('**/api/interpreter?**',r=>r.abort());
   await page.locator('#search-toggle').click();await page.locator('#court-search-options summary').click();await page.locator('#find-live-parks').click();await page.waitForTimeout(400);await page.locator('#close-search').click();await page.waitForTimeout(600);
   assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
-  assert.equal(await page.locator('#updates-badge').isVisible(),true,'a real problem still marks the bell');
+  assert.equal(await page.locator('#updates-badge').isVisible(),false,'no dot on the bell after Got it');
   await openUpdates();assert.match(await page.locator('#coverage-status').innerText(),/live lookup unavailable/);await page.locator('#close-location-updates').click();
   await page.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[{type:'way',id:777003,center:{lat:33.525,lon:-111.904},tags:{sport:'basketball',name:'New nearby fixture court'}}]}}));
   await page.locator('#search-toggle').click();await page.locator('#find-live-parks').click();
   await page.locator('[data-map=osm-way-777003]').waitFor();await page.locator('#close-search').click();await page.waitForTimeout(600);
-  assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
+  assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);assert.equal(await page.locator('#updates-badge').isVisible(),false);
   for(let i=0;i<3;i++){await page.locator('.leaflet-control-zoom-out').click();await page.waitForTimeout(400);}
   await page.mouse.move(195,520);await page.mouse.down();await page.mouse.move(60,380,{steps:8});await page.mouse.up();await page.waitForTimeout(900);
   assert.equal(await page.locator('#location-updates').evaluate(e=>e.open),false);
@@ -89,6 +89,6 @@ const pixel=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
   assert.equal(await visitor.locator('#location-updates').evaluate(e=>e.open),false,'moving the map never opens the card');
   await fresh.close();
   assert.deepEqual(errors,[]);
-  console.log('PASS: visible Light/Dark toggle, saved theme, themed dropdown, area card opens once on arrival, Got it holds across searches, map moves, failures, new courts and restarts until the next sign-in, problems still mark the bell, moving the map never pops the card, keyboard access, and mobile/desktop layout.');
+  console.log('PASS: visible Light/Dark toggle, saved theme, themed dropdown, area card opens once on arrival, Got it silences the card and the bell dot across searches, map moves, failures, new courts and restarts until the next sign-in, moving the map never pops the card, keyboard access, and mobile/desktop layout.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
