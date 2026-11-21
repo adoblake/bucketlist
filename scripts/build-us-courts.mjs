@@ -45,14 +45,12 @@ const FILTERS=['nwr/sport','nwr/leisure=park,recreation_ground,sports_centre','n
 let links=null;
 async function downloadUrl(state){
  links??=(async()=>{
-  // A single network blip here would fail every state, so retry a few times.
-  let r;for(let attempt=1;;attempt++){
-   try{r=await fetch(INDEX,{headers:{'User-Agent':UA},signal:AbortSignal.timeout(60000)});if(r.ok||r.status<500)break;}catch(error){if(attempt>=4)throw Error(`Geofabrik index ${INDEX}: ${error.message}`);}
-   if(attempt>=4)break;await new Promise(done=>setTimeout(done,5000*attempt));
-  }
-  if(!r.ok)throw Error(`Geofabrik index ${INDEX}: HTTP ${r.status}`);
+  // curl, like the downloads: Node's built-in fetch intermittently fails to reach Geofabrik from GitHub's runners.
+  let body;
+  try{body=(await run('curl',['-fsSL','--retry','4','--retry-delay','5','--retry-all-errors','--connect-timeout','30','--max-time','120','-A',UA,INDEX],{maxBuffer:64<<20})).stdout;}
+  catch(error){throw Error(`Geofabrik index ${INDEX}: ${String(error.stderr||error.message).trim()}`);}
   const found=new Map();
-  for(const {properties:p={}} of (await r.json()).features||[]){
+  for(const {properties:p={}} of JSON.parse(body).features||[]){
    // The index gives ISO codes as a string or a list depending on the region.
    const list=v=>Array.isArray(v)?v:v?[v]:[];
    const pbf=p.urls?.pbf,codes=list(p['iso3166-2']);if(list(p['iso3166-1:alpha2']).includes('PR'))codes.push('US-PR');
