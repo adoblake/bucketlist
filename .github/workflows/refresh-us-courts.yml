@@ -29,19 +29,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Same download logic as the build, on a big and a small state.
       - name: Check Geofabrik
-        run: |
-          set -o pipefail
-          curl -fsSL --retry 3 -A bucketlist-court-directory/1.0 -o index.json https://download.geofabrik.de/index-v1-nogeom.json
-          node -e "const f=require('./index.json').features.filter(f=>[].concat(f.properties['iso3166-2']||[]).includes('US-GA'));console.log(JSON.stringify(f.map(x=>x.properties),null,1))"
-          url=$(node -e "const f=require('./index.json').features.find(f=>[].concat(f.properties['iso3166-2']||[]).includes('US-GA'));console.log(f?f.properties.urls.pbf:'')")
-          if [ -z "$url" ]; then echo '::error::Geofabrik index has no US-GA extract'; exit 1; fi
-          echo "Georgia extract: $url"
-          echo '--- redirect chain (HEAD)'
-          curl -sSIL -A bucketlist-court-directory/1.0 "$url" | grep -iE '^(HTTP|location|content-length|last-modified)' || true
-          echo '--- first KB (GET)'
-          curl -fsSL -A bucketlist-court-directory/1.0 -r 0-1023 -o head.bin -w 'final %{http_code} %{url_effective}\n' "$url"
-          ls -l head.bin
+        run: node scripts/build-us-courts.mjs --probe GA CA RI
 
   states:
     needs: preflight

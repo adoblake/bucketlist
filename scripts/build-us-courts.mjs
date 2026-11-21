@@ -33,7 +33,8 @@ const STATES=Object.keys(NAMES);
 const budgetMs=Number(process.env.BUDGET_MINUTES||0)*60000;
 // --tiles-only: skip downloading and just (re)write the tiles from the built states in .cache/us-courts/
 // (the workflow builds states in parallel jobs, then merges them this way).
-const args=process.argv.slice(2),tilesOnly=args.includes('--tiles-only');
+// --probe: only check that each listed state's extract can be downloaded (the workflow's preflight).
+const args=process.argv.slice(2),tilesOnly=args.includes('--tiles-only'),probe=args.includes('--probe');
 const only=args.filter(a=>!a.startsWith('--')).map(s=>s.toUpperCase()).filter(s=>STATES.includes(s));
 if(args.some(a=>!a.startsWith('--'))&&!only.length)throw Error('Unknown state code. Use two-letter codes such as GA FL NY CA.');
 
@@ -60,12 +61,23 @@ async function downloadUrl(state){
  return url;
 }
 
+// A URL that actually serves bytes (checked with a 1-byte ranged GET).
+async function reachable(url){try{await run('curl',['-fsSL','--retry','2','--retry-delay','5','-r','0-0','-o','/dev/null','-A',UA,url]);return true;}catch{return false;}}
+// Geofabrik's "-latest" link redirects to a dated file (georgia-261120.osm.pbf) that can be missing while the daily
+// update publishes; fall back to the newest dated file from the past week that downloads.
+async function workingUrl(state){
+ const latest=await downloadUrl(state);if(await reachable(latest))return latest;
+ const base=latest.replace(/-latest\.osm\.pbf$/,'');
+ for(let days=0;days<=7;days++){const stamp=new Date(Date.now()-days*864e5).toISOString().slice(2,10).replace(/-/g,''),url=`${base}-${stamp}.osm.pbf`;if(await reachable(url))return url;}
+ throw Error(`${latest} redirects to a missing file, and no dated file from the past week downloads`);
+}
+
 async function extract(state){
  const features=new URL(`${state}.geojsonseq`,cacheDir);
  if(existsSync(features))return features;
  const pbf=new URL(`${state}.osm.pbf`,cacheDir),filtered=new URL(`${state}.filtered.osm.pbf`,cacheDir),partial=new URL(`${state}.partial`,cacheDir);
  try{
-  const url=await downloadUrl(state);
+  const url=await workingUrl(state);console.log(`${state}: downloading ${url}`);
   // Bounded download: up to 3 retries for transient errors only (a 404 fails at once), abort a transfer that stalls
   // below 100 KB/s for 2 minutes, never more than 70 minutes.
   await run('curl',['-fsSL','--retry','3','--retry-delay','20','--connect-timeout','30','--speed-limit','102400','--speed-time','120','--max-time','4200','-A',UA,'-o',path(pbf),url],{maxBuffer:1<<20})
@@ -103,6 +115,10 @@ async function records(features){
  return out;
 }
 
+if(probe){
+ let ok=true;for(const state of only)try{console.log(`${state}: ${await workingUrl(state)}`);}catch(error){ok=false;console.error(`${state}: ${error.message}`);}
+ process.exit(ok?0:1);
+}
 await mkdir(cacheDir,{recursive:true});await mkdir(outDir,{recursive:true});
 const todo=tilesOnly?[]:only.length?only:STATES;
 const started=Date.now();let done=0;
