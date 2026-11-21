@@ -24,7 +24,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Ten-second check that the source answers before eight runners start downloading.
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Geofabrik
+        run: |
+          curl -fsSL --retry 3 -A bucketlist-court-directory/1.0 -o index.json https://download.geofabrik.de/index-v1-nogeom.json
+          url=$(node -e "const f=require('./index.json').features.find(f=>(f.properties['iso3166-2']||[]).includes('US-GA'));console.log(f?f.properties.urls.pbf:'')")
+          if [ -z "$url" ]; then echo '::error::Geofabrik index has no US-GA extract'; exit 1; fi
+          echo "Georgia extract: $url"
+          curl -fsSIL -A bucketlist-court-directory/1.0 "$url" | grep -iE '^(HTTP|content-length|last-modified)'
+
   states:
+    needs: preflight
     name: Build ${{ matrix.group }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -95,8 +109,8 @@ jobs:
           exit 1
 
   publish:
-    needs: states
-    if: ${{ !cancelled() }}
+    needs: [preflight, states]
+    if: ${{ !cancelled() && needs.preflight.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -111,7 +125,7 @@ jobs:
           merge-multiple: true
       - name: Write map tiles
         run: |
-          ls .cache/us-courts
+          mkdir -p .cache/us-courts && ls .cache/us-courts
           node scripts/build-us-courts.mjs --tiles-only
       - name: Check the directory code
         run: node --test tests/us-courts.test.js

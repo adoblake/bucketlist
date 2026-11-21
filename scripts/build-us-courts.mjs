@@ -23,10 +23,12 @@ import {buildLocations,tileKey,TILE_SIZE} from '../public/us-courts.js';
 const run=promisify(execFile);
 const root=new URL('../',import.meta.url),cacheDir=new URL('.cache/us-courts/',root),outDir=new URL('public/data/us/',root);
 const path=u=>fileURLToPath(u);
-const MIRROR=process.env.GEOFABRIK_URL||'https://download.geofabrik.de/north-america/us/';
+const UA='bucketlist-court-directory/1.0';
+// Download links come from Geofabrik's own index, matched by ISO code (US-GA, US-FL, …), not from guessed paths.
+const INDEX=process.env.GEOFABRIK_INDEX||'https://download.geofabrik.de/index-v1-nogeom.json';
 // Most populous first, so a run that is cut short still covers the most players.
-const SLUGS={CA:'california',TX:'texas',FL:'florida',NY:'new-york',PA:'pennsylvania',IL:'illinois',OH:'ohio',GA:'georgia',NC:'north-carolina',MI:'michigan',NJ:'new-jersey',VA:'virginia',WA:'washington',AZ:'arizona',TN:'tennessee',MA:'massachusetts',IN:'indiana',MD:'maryland',MO:'missouri',WI:'wisconsin',CO:'colorado',MN:'minnesota',SC:'south-carolina',AL:'alabama',LA:'louisiana',KY:'kentucky',OR:'oregon',OK:'oklahoma',CT:'connecticut',UT:'utah',IA:'iowa',NV:'nevada',AR:'arkansas',KS:'kansas',MS:'mississippi',NM:'new-mexico',NE:'nebraska',ID:'idaho',WV:'west-virginia',HI:'hawaii',NH:'new-hampshire',ME:'maine',MT:'montana',RI:'rhode-island',DE:'delaware',SD:'south-dakota',ND:'north-dakota',AK:'alaska',DC:'district-of-columbia',VT:'vermont',WY:'wyoming',PR:'puerto-rico'};
-const STATES=Object.keys(SLUGS);
+const NAMES={CA:'california',TX:'texas',FL:'florida',NY:'new-york',PA:'pennsylvania',IL:'illinois',OH:'ohio',GA:'georgia',NC:'north-carolina',MI:'michigan',NJ:'new-jersey',VA:'virginia',WA:'washington',AZ:'arizona',TN:'tennessee',MA:'massachusetts',IN:'indiana',MD:'maryland',MO:'missouri',WI:'wisconsin',CO:'colorado',MN:'minnesota',SC:'south-carolina',AL:'alabama',LA:'louisiana',KY:'kentucky',OR:'oregon',OK:'oklahoma',CT:'connecticut',UT:'utah',IA:'iowa',NV:'nevada',AR:'arkansas',KS:'kansas',MS:'mississippi',NM:'new-mexico',NE:'nebraska',ID:'idaho',WV:'west-virginia',HI:'hawaii',NH:'new-hampshire',ME:'maine',MT:'montana',RI:'rhode-island',DE:'delaware',SD:'south-dakota',ND:'north-dakota',AK:'alaska',DC:'district-of-columbia',VT:'vermont',WY:'wyoming',PR:'puerto-rico'};
+const STATES=Object.keys(NAMES);
 // Optional time budget (minutes): stop starting new states when it runs out, still write tiles for what's done.
 const budgetMs=Number(process.env.BUDGET_MINUTES||0)*60000;
 // --tiles-only: skip downloading and just (re)write the tiles from the built states in .cache/us-courts/
@@ -39,13 +41,33 @@ if(args.some(a=>!a.startsWith('--'))&&!only.length)throw Error('Unknown state co
 // centres that contain them, and named places for the city line.
 const FILTERS=['nwr/sport','nwr/leisure=park,recreation_ground,sports_centre','nwr/amenity=school,college,university,community_centre','n/place=city,town,village,suburb,hamlet'];
 
+let links=null;
+async function downloadUrl(state){
+ links??=(async()=>{
+  const r=await fetch(INDEX,{headers:{'User-Agent':UA},signal:AbortSignal.timeout(60000)});
+  if(!r.ok)throw Error(`Geofabrik index ${INDEX}: HTTP ${r.status}`);
+  const found=new Map();
+  for(const {properties:p={}} of (await r.json()).features||[]){
+   const pbf=p.urls?.pbf,codes=[...(p['iso3166-2']||[])];if((p['iso3166-1:alpha2']||[]).includes('PR'))codes.push('US-PR');
+   // Prefer the state-level extract (parent "us") over any sub-region that carries the same code.
+   for(const code of codes)if(pbf&&/^US-[A-Z]{2}$/.test(code)&&(!found.has(code)||p.parent==='us'))found.set(code,pbf);
+  }
+  return found;
+ })();
+ const url=(await links).get('US-'+state);if(!url)throw Error(`No Geofabrik extract listed for US-${state} in ${INDEX}`);
+ return url;
+}
+
 async function extract(state){
  const features=new URL(`${state}.geojsonseq`,cacheDir);
  if(existsSync(features))return features;
  const pbf=new URL(`${state}.osm.pbf`,cacheDir),filtered=new URL(`${state}.filtered.osm.pbf`,cacheDir),partial=new URL(`${state}.partial`,cacheDir);
  try{
-  // Bounded download: 3 retries, abort a transfer that stalls below 100 KB/s for 2 minutes, never more than 70 minutes.
-  await run('curl',['-fsSL','--retry','3','--retry-delay','20','--retry-all-errors','--connect-timeout','30','--speed-limit','102400','--speed-time','120','--max-time','4200','-A','bucketlist-court-directory/1.0','-o',path(pbf),MIRROR+SLUGS[state]+'-latest.osm.pbf'],{maxBuffer:1<<20});
+  const url=await downloadUrl(state);
+  // Bounded download: up to 3 retries for transient errors only (a 404 fails at once), abort a transfer that stalls
+  // below 100 KB/s for 2 minutes, never more than 70 minutes.
+  await run('curl',['-fsSL','--retry','3','--retry-delay','20','--connect-timeout','30','--speed-limit','102400','--speed-time','120','--max-time','4200','-A',UA,'-o',path(pbf),url],{maxBuffer:1<<20})
+   .catch(error=>{throw Error(`${url}: ${String(error.stderr||error.message).trim()}`);});
   await run('osmium',['tags-filter','--overwrite','-o',path(filtered),path(pbf),...FILTERS]);
   await rm(pbf,{force:true});
   await run('osmium',['export','--overwrite','-f','geojsonseq','--format-option','print_record_separator=false','-a','type,id','-o',path(partial),path(filtered)]);
