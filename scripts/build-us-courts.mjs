@@ -48,7 +48,9 @@ async function downloadUrl(state){
   if(!r.ok)throw Error(`Geofabrik index ${INDEX}: HTTP ${r.status}`);
   const found=new Map();
   for(const {properties:p={}} of (await r.json()).features||[]){
-   const pbf=p.urls?.pbf,codes=[...(p['iso3166-2']||[])];if((p['iso3166-1:alpha2']||[]).includes('PR'))codes.push('US-PR');
+   // The index gives ISO codes as a string or a list depending on the region.
+   const list=v=>Array.isArray(v)?v:v?[v]:[];
+   const pbf=p.urls?.pbf,codes=list(p['iso3166-2']);if(list(p['iso3166-1:alpha2']).includes('PR'))codes.push('US-PR');
    // Prefer the state-level extract (parent "us") over any sub-region that carries the same code.
    for(const code of codes)if(pbf&&/^US-[A-Z]{2}$/.test(code)&&(!found.has(code)||p.parent==='us'))found.set(code,pbf);
   }
