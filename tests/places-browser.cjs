@@ -9,6 +9,8 @@ const url=process.env.APP_URL||'http://127.0.0.1:3097';
   await context.addInitScript(()=>{localStorage.setItem('bucketlist-welcome-seen','yes');localStorage.setItem('bucketlist-release-seen','courts-everywhere-v1');});
   if(geoScript)await context.addInitScript(geoScript);
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+  // These checks cover the live-lookup fallback, so keep the nationwide directory out of them (directory-browser covers it).
+  await page.route('**/data/us/**',r=>r.fulfill({status:404,body:'directory not used in this test'}));
   await page.route('https://tile.openstreetmap.org/**',r=>r.abort());
   await page.route('**/api/interpreter?**',r=>r.fulfill({json:{elements:[]}}));
   return {context,page};
