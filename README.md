@@ -6,6 +6,8 @@ Players can now use **+ Add court** to pin a specific basketball court inside an
 
 The selected **Game Plan (option 2)** layout remains as an expandable sample in **Games**, with the next run, a photograph of its actual venue, roster and play-style details, and personal progress. Warm off-white, bold Inter typography, orange accents, and a matching dark theme retain the original Bucketlist branding.
 
+Accessibility work targets WCAG 2.2 AA. See [accessibility changes, repeatable checks and remaining manual verification](docs/accessibility.md). This is not a claim of full conformance.
+
 ## Put it on your phone
 
 **Open Bucketlist: https://adoblake.github.io/bucketlist/**
